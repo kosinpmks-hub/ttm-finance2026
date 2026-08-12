@@ -24,11 +24,10 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .table-container { overflow-x: auto; }
-        table { border-collapse: collapse; width: 100%; min-width: 800px; }
+        table { border-collapse: collapse; width: 100%; min-width: 900px; }
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
         th { background-color: #f9fafb; font-weight: 600; color: #374151; }
         
-        /* ซ่อน Scrollbar แต่ยังเลื่อนได้ */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -37,7 +36,6 @@
 
     <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         
-        <!-- Header & Tabs Navigation -->
         <div class="px-6 md:px-8 pt-6 border-b border-gray-200">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold text-gray-800">ระบบจัดการรับชำระเงิน (แผนไทย)</h1>
@@ -54,7 +52,6 @@
         </div>
 
         <div class="p-6 md:p-8">
-            <!-- ================= VIEW: FORM ================= -->
             <div id="view-form" class="space-y-6">
                 <!-- Dashboard Box -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -116,7 +113,6 @@
                                 <button type="button" onclick="addProcedure()" class="bg-blue-100 text-blue-700 font-medium px-4 rounded-lg hover:bg-blue-200 transition">เพิ่ม</button>
                             </div>
                             
-                            <!-- รายการหัตถการที่เลือกแล้ว -->
                             <div id="selectedItemsContainer" class="mt-3 space-y-2 max-h-32 overflow-y-auto">
                                 <p class="text-xs text-gray-400 text-center py-2" id="emptyProcText">ยังไม่มีรายการหัตถการ</p>
                             </div>
@@ -176,7 +172,6 @@
                 </form>
             </div>
 
-            <!-- ================= VIEW: REPORT ================= -->
             <div id="view-report" class="hidden space-y-6">
                 <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-wrap gap-4 items-end">
                     <div>
@@ -210,16 +205,16 @@
                                 <th>ค่ายา</th>
                                 <th>สถานะ</th>
                                 <th>ผู้ให้บริการ</th>
+                                <th>รายได้ผู้ให้บริการ</th>
                             </tr>
                         </thead>
                         <tbody id="reportTbody" class="text-sm">
-                            <tr><td colspan="9" class="text-center py-6 text-gray-500">กรุณาเลือกช่วงเวลาและกดค้นหา</td></tr>
+                            <tr><td colspan="10" class="text-center py-6 text-gray-500">กรุณาเลือกช่วงเวลาและกดค้นหา</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- ================= VIEW: SETTINGS ================= -->
             <div id="view-settings" class="hidden space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
@@ -231,6 +226,7 @@
                         </h3>
                         <div class="flex gap-2 mb-4">
                             <input type="text" id="set-personnel-name" placeholder="ชื่อ-นามสกุล" class="flex-1 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
+                            <input type="number" id="set-personnel-share" placeholder="% ส่วนแบ่ง" class="w-24 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
                             <button type="button" id="btn-add-personnel" onclick="addSettingPersonnel()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 w-20">เพิ่ม</button>
                         </div>
                         <div class="border rounded-lg max-h-48 overflow-y-auto no-scrollbar">
@@ -294,19 +290,45 @@
                     
                 </div>
             </div>
-
         </div>
     </div>
 
     <div id="toastMessage" class="toast">ข้อความแจ้งเตือน</div>
 
-    <!-- โค้ดระบบหลังบ้าน Firebase -->
+    <!-- Edit Modal (หน้าต่างแก้ไขข้อมูลในหน้าตั้งค่า) -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center" id="editModalTitle">
+                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                แก้ไขข้อมูล
+            </h3>
+            <input type="hidden" id="edit-collection">
+            <input type="hidden" id="edit-id">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อรายการ</label>
+                    <input type="text" id="edit-name" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
+                </div>
+                <div id="edit-num-container" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1" id="edit-num-label">ค่าตัวเลข</label>
+                    <input type="number" id="edit-num" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">ยกเลิก</button>
+                <button type="button" onclick="saveEditSetting()" id="btn-save-edit" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition flex items-center">
+                    บันทึกการแก้ไข
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, query, orderBy, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // รหัสเชื่อมต่อของคุณ (จากแชท)
+        // รหัสเชื่อมต่อของคุณ
         const firebaseConfig = {
             apiKey: "AIzaSyCN8Agw8ZmjSnQjqke4dO4ghwRD_6ZG4QQ",
             authDomain: "ttm-finance2026.firebaseapp.com",
@@ -321,11 +343,11 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ตัวแปรสำหรับเก็บข้อมูลที่โหลดมา เพื่อใช้งานในฟอร์ม
+        // ตัวแปรส่วนกลาง
         let itemsDataState = [];
         let selectedProcedures = [];
+        let personnelSharesMap = {}; // เก็บ % ส่วนแบ่งของแพทย์ไว้ใช้คำนวณในรายงาน
 
-        // UI Helpers (ทำให้เรียกผ่าน onclick ใน HTML ได้)
         window.showToast = function(message, isSuccess = true) {
             const toast = document.getElementById("toastMessage");
             toast.textContent = message;
@@ -348,18 +370,44 @@
             document.getElementById(`tab-${tabName}`).classList.replace('border-transparent', 'border-blue-600');
         };
 
-        // ตั้งค่าวันที่เริ่มต้น
+        // ฟังก์ชันเปิด-ปิด Edit Modal
+        window.openEditModal = function(collectionName, id, name, num) {
+            document.getElementById('edit-collection').value = collectionName;
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-name').value = name;
+
+            const numContainer = document.getElementById('edit-num-container');
+            const numLabel = document.getElementById('edit-num-label');
+            const numInput = document.getElementById('edit-num');
+
+            if (collectionName === 'ttm_personnel') {
+                numContainer.classList.remove('hidden');
+                numLabel.textContent = '% ส่วนแบ่งรายได้';
+                numInput.value = num || 0;
+            } else if (collectionName === 'ttm_items') {
+                numContainer.classList.remove('hidden');
+                numLabel.textContent = 'ราคา (฿)';
+                numInput.value = num || 0;
+            } else {
+                numContainer.classList.add('hidden');
+                numInput.value = '';
+            }
+
+            document.getElementById('editModal').classList.remove('hidden');
+        };
+
+        window.closeEditModal = function() {
+            document.getElementById('editModal').classList.add('hidden');
+        };
+
         document.getElementById('serviceDate').valueAsDate = new Date();
         document.getElementById('startDate').valueAsDate = new Date(new Date().setDate(1));
         document.getElementById('endDate').valueAsDate = new Date();
 
-        // ---------------------------------------------------------
-        // ระบบ Authentication & ฐานข้อมูล Realtime
-        // ---------------------------------------------------------
         signInAnonymously(auth).catch(error => {
             console.error("Auth Error:", error);
             document.getElementById('connStatus').classList.replace('bg-emerald-500', 'bg-red-500');
-            document.getElementById('statusText').textContent = "เชื่อมต่อล้มเหลว (เช็ค Auth)";
+            document.getElementById('statusText').textContent = "เชื่อมต่อล้มเหลว (เช็ค Auth/Rules)";
         });
 
         onAuthStateChanged(auth, (user) => {
@@ -370,9 +418,6 @@
             }
         });
 
-        // ---------------------------------------------------------
-        // การจัดการฟอร์มบันทึกบริการ
-        // ---------------------------------------------------------
         window.addProcedure = function() {
             const select = document.getElementById('itemSelect');
             const id = select.value;
@@ -455,7 +500,6 @@
             window.toggleSplitFields();
         };
 
-        // ส่งข้อมูลบันทึก
         document.getElementById('billingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -471,13 +515,10 @@
 
             const receiptNo = document.getElementById('receiptNo').value.trim();
             const invoiceNo = document.getElementById('invoiceNo').value.trim();
-            // ถ้าไม่กรอกเลขใบเสร็จ/ใบแจ้งหนี้เลย ให้ถือว่าเป็นสถานะ ค้างออกใบเสร็จ
             let currentStatus = (receiptNo === "" && invoiceNo === "") ? "ค้างออกใบเสร็จ" : "ออกใบเสร็จแล้ว";
-
             const procedureText = selectedProcedures.map(i => i.name).join(', ');
 
             try {
-                // บันทึกรายการแรกลง Database
                 await addDoc(collection(db, 'ttm_services'), {
                     serviceDate: document.getElementById('serviceDate').value,
                     idCard: document.getElementById('idCard').value,
@@ -494,7 +535,6 @@
                     timestamp: serverTimestamp()
                 });
 
-                // หากมีการแยก 2 วัน
                 if (document.getElementById('isSplit').checked) {
                     await addDoc(collection(db, 'ttm_services'), {
                         serviceDate: document.getElementById('nextDate').value,
@@ -515,7 +555,7 @@
 
                 window.showToast("บันทึกข้อมูลเรียบร้อยแล้ว", true);
                 window.resetForm();
-                loadDashboardData(); // โหลดยอดรวมใหม่
+                loadDashboardData(); 
             } catch (error) {
                 console.error("Error adding document: ", error);
                 window.showToast("เกิดข้อผิดพลาดในการบันทึก", false);
@@ -525,11 +565,38 @@
             }
         });
 
-        // ---------------------------------------------------------
-        // การจัดการหน้าตั้งค่า (Settings) - อัปเดตแบบ Realtime
-        // ---------------------------------------------------------
-        
-        // ฟังก์ชันลบข้อมูลทั่วไป
+        window.saveEditSetting = async function() {
+            const collectionName = document.getElementById('edit-collection').value;
+            const docId = document.getElementById('edit-id').value;
+            const newName = document.getElementById('edit-name').value.trim();
+            const newNum = document.getElementById('edit-num').value;
+            const btn = document.getElementById('btn-save-edit');
+
+            if (!newName) return window.showToast("กรุณากรอกชื่อรายการ", false);
+
+            btn.disabled = true;
+            btn.innerHTML = 'กำลังบันทึก...';
+
+            try {
+                const updateData = { name: newName };
+                if (collectionName === 'ttm_personnel') {
+                    updateData.sharePercent = parseFloat(newNum) || 0;
+                } else if (collectionName === 'ttm_items') {
+                    updateData.price = parseFloat(newNum) || 0;
+                }
+
+                await updateDoc(doc(db, collectionName, docId), updateData);
+                window.showToast("แก้ไขข้อมูลสำเร็จ", true);
+                closeEditModal();
+            } catch (error) {
+                console.error("Edit error:", error);
+                window.showToast("เกิดข้อผิดพลาดในการแก้ไข", false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'บันทึกการแก้ไข';
+            }
+        };
+
         window.deleteSettingData = async function(collectionName, docId) {
             if(confirm("ยืนยันการลบข้อมูลรายการนี้?")) {
                 try {
@@ -541,7 +608,6 @@
             }
         };
 
-        // ดึงข้อมูล Realtime: บุคลากร
         function setupRealtimeListeners() {
             // 1. บุคลากร
             onSnapshot(query(collection(db, 'ttm_personnel'), orderBy('name')), (snapshot) => {
@@ -549,36 +615,50 @@
                 const select = document.getElementById('provider');
                 ul.innerHTML = '';
                 select.innerHTML = '<option value="">-- เลือกผู้ให้บริการ --</option>';
+                personnelSharesMap = {}; // เคลียร์ค่าเดิม
                 
                 if(snapshot.empty) ul.innerHTML = '<li class="p-3 text-center text-gray-400">ยังไม่มีข้อมูล</li>';
                 
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
+                    // อัปเดต Map สำหรับคำนวณรายงาน
+                    personnelSharesMap[data.name] = data.sharePercent || 0; 
+                    
+                    let shareText = data.sharePercent ? `<span class="text-xs text-blue-600 ml-2 font-medium">(${data.sharePercent}%)</span>` : `<span class="text-xs text-gray-400 ml-2">(0%)</span>`;
+                    const safeName = data.name.replace(/'/g, "\\'");
+                    
                     ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
-                        <span>${data.name}</span>
-                        <button onclick="deleteSettingData('ttm_personnel', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-2 py-1 bg-red-50 rounded">ลบ</button>
+                        <span>${data.name} ${shareText}</span>
+                        <div class="flex space-x-1">
+                            <button onclick="openEditModal('ttm_personnel', '${docSnap.id}', '${safeName}', ${data.sharePercent || 0})" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
+                            <button onclick="deleteSettingData('ttm_personnel', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
+                        </div>
                     </li>`;
                     select.innerHTML += `<option value="${data.name}">${data.name}</option>`;
                 });
             });
 
-            // 2. หัตถการ/สินค้า
+            // 2. หัตถการ
             onSnapshot(query(collection(db, 'ttm_items'), orderBy('name')), (snapshot) => {
                 const ul = document.getElementById('list-items');
                 const select = document.getElementById('itemSelect');
                 ul.innerHTML = '';
                 select.innerHTML = '<option value="">-- เลือกหัตถการ --</option>';
-                itemsDataState = []; // Reset state
+                itemsDataState = []; 
                 
                 if(snapshot.empty) ul.innerHTML = '<li class="p-3 text-center text-gray-400">ยังไม่มีข้อมูล</li>';
 
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     itemsDataState.push({ id: docSnap.id, name: data.name, price: data.price });
+                    const safeName = data.name.replace(/'/g, "\\'");
                     
                     ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
-                        <span>${data.name} <span class="text-blue-600 font-medium ml-2">฿${data.price}</span></span>
-                        <button onclick="deleteSettingData('ttm_items', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-2 py-1 bg-red-50 rounded">ลบ</button>
+                        <span>${data.name} <span class="text-emerald-600 font-medium ml-2">฿${data.price}</span></span>
+                        <div class="flex space-x-1">
+                            <button onclick="openEditModal('ttm_items', '${docSnap.id}', '${safeName}', ${data.price || 0})" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
+                            <button onclick="deleteSettingData('ttm_items', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
+                        </div>
                     </li>`;
                     select.innerHTML += `<option value="${docSnap.id}">${data.name} (฿${data.price})</option>`;
                 });
@@ -595,9 +675,13 @@
 
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
+                    const safeName = data.name.replace(/'/g, "\\'");
                     ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
                         <span>${data.name}</span>
-                        <button onclick="deleteSettingData('ttm_rights', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-2 py-1 bg-red-50 rounded">ลบ</button>
+                        <div class="flex space-x-1">
+                            <button onclick="openEditModal('ttm_rights', '${docSnap.id}', '${safeName}')" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
+                            <button onclick="deleteSettingData('ttm_rights', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
+                        </div>
                     </li>`;
                     select.innerHTML += `<option value="${data.name}">${data.name}</option>`;
                 });
@@ -614,25 +698,32 @@
 
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
+                    const safeName = data.name.replace(/'/g, "\\'");
                     ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
                         <span>${data.name}</span>
-                        <button onclick="deleteSettingData('ttm_diagnosis', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-2 py-1 bg-red-50 rounded">ลบ</button>
+                        <div class="flex space-x-1">
+                            <button onclick="openEditModal('ttm_diagnosis', '${docSnap.id}', '${safeName}')" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
+                            <button onclick="deleteSettingData('ttm_diagnosis', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
+                        </div>
                     </li>`;
                     datalist.innerHTML += `<option value="${data.name}">`;
                 });
             });
         }
 
-        // --- ฟังก์ชันเพิ่มข้อมูลในหน้าตั้งค่า ---
         window.addSettingPersonnel = async function() {
-            const input = document.getElementById('set-personnel-name');
+            const inputName = document.getElementById('set-personnel-name');
+            const inputShare = document.getElementById('set-personnel-share');
             const btn = document.getElementById('btn-add-personnel');
-            if(!input.value.trim()) return;
+            if(!inputName.value.trim()) return;
             
             btn.disabled = true; btn.innerHTML = "...";
             try {
-                await addDoc(collection(db, 'ttm_personnel'), { name: input.value.trim() });
-                input.value = '';
+                await addDoc(collection(db, 'ttm_personnel'), { 
+                    name: inputName.value.trim(),
+                    sharePercent: parseFloat(inputShare.value) || 0
+                });
+                inputName.value = ''; inputShare.value = '';
                 window.showToast('เพิ่มพนักงานแล้ว');
             } catch(e) { window.showToast('ข้อผิดพลาด', false); }
             finally { btn.disabled = false; btn.innerHTML = "เพิ่ม"; }
@@ -684,12 +775,7 @@
             finally { btn.disabled = false; btn.innerHTML = "เพิ่ม"; }
         };
 
-
-        // ---------------------------------------------------------
-        // ระบบดึงข้อมูล Dashboard และ Report
-        // ---------------------------------------------------------
         async function loadDashboardData() {
-            // วันที่ปัจจุบัน (Format YYYY-MM-DD)
             const todayStr = new Date().toISOString().split('T')[0];
             
             try {
@@ -703,11 +789,9 @@
                     const data = doc.data();
                     const totalCost = (data.procCost || 0) + (data.medCost || 0);
 
-                    // ค้างชำระทั้งหมด (ทุกวัน)
                     if (data.status === "ค้างออกใบเสร็จ") {
                         pendingTotal += totalCost;
                     }
-                    // ออกใบเสร็จแล้วเฉพาะวันนี้
                     if (data.status === "ออกใบเสร็จแล้ว" && data.serviceDate === todayStr) {
                         todayTotal += totalCost;
                     }
@@ -732,18 +816,16 @@
             
             btn.disabled = true;
             loader.style.display = 'block';
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-500">กำลังโหลดข้อมูล...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-gray-500">กำลังโหลดข้อมูล...</td></tr>';
 
             try {
-                // Query จาก Firebase (เพื่อความเรียบง่าย ดึงมาทั้งหมดแล้ว Filter ด้วย JS)
                 const querySnapshot = await getDocs(collection(db, "ttm_services"));
                 const formatMoney = (num) => Number(num).toLocaleString('th-TH', {minimumFractionDigits: 2});
                 
                 let html = '';
                 let hasData = false;
-
-                // เรียงลำดับตามวันที่
                 const allDocs = [];
+                
                 querySnapshot.forEach(d => allDocs.push(d.data()));
                 allDocs.sort((a,b) => new Date(b.serviceDate) - new Date(a.serviceDate));
 
@@ -751,14 +833,17 @@
                     if (data.serviceDate >= start && data.serviceDate <= end) {
                         hasData = true;
                         
-                        // ปรับสีสถานะ
                         let statusBadge = data.status === "ออกใบเสร็จแล้ว" 
                             ? `<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">ออกใบเสร็จแล้ว</span>`
                             : `<span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">ค้างออกใบเสร็จ</span>`;
 
-                        // แปลงวันที่ให้อ่านง่าย
                         let dateObj = new Date(data.serviceDate);
                         let dateStr = dateObj.toLocaleDateString('th-TH');
+
+                        // คำนวณรายได้แพทย์ 
+                        let sharePercent = personnelSharesMap[data.provider] || 0;
+                        if(sharePercent > 1) sharePercent = sharePercent / 100;
+                        let providerIncome = (data.procCost || 0) * sharePercent;
 
                         html += `
                             <tr class="hover:bg-gray-50 border-b">
@@ -771,6 +856,7 @@
                                 <td class="text-right">฿${formatMoney(data.medCost)}</td>
                                 <td class="text-center">${statusBadge}</td>
                                 <td>${data.provider}</td>
+                                <td class="text-right font-medium text-emerald-600">฿${formatMoney(providerIncome)}</td>
                             </tr>
                         `;
                     }
@@ -779,13 +865,13 @@
                 if (hasData) {
                     tbody.innerHTML = html;
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-500">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-gray-500">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>';
                 }
 
             } catch (error) {
                 console.error("Report Error:", error);
                 window.showToast("ไม่สามารถโหลดรายงานได้", false);
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
             } finally {
                 btn.disabled = false;
                 loader.style.display = 'none';
