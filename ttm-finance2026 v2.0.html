@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกบริการและรับชำระเงิน - คลินิกแพทย์แผนไทย</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', 'Inter', sans-serif; background-color: #f3f4f6; }
+        .toast {
+            visibility: hidden; min-width: 250px; background-color: #333; color: #fff;
+            text-align: center; border-radius: 8px; padding: 16px; position: fixed;
+            z-index: 50; left: 50%; bottom: 30px; transform: translateX(-50%);
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.2); transition: visibility 0s, opacity 0.5s linear; opacity: 0;
+        }
+        .toast.show { visibility: visible; opacity: 1; }
+        .toast.success { background-color: #10B981; }
+        .toast.error { background-color: #EF4444; }
+        .loader {
+            border: 3px solid #f3f3f3; border-top: 3px solid #3B82F6; border-radius: 50%;
+            width: 20px; height: 20px; animation: spin 1s linear infinite; display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .table-container { overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; min-width: 800px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        th { background-color: #f9fafb; font-weight: 600; color: #374151; }
+        
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; border-radius: 16px; padding: 24px; border: 1px solid #888; width: 90%; max-width: 800px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); animation: modalFadeIn 0.3s ease-out; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-scroll { max-height: 60vh; overflow-y: auto; padding-right: 10px; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        
+        <!-- Header & Tabs -->
+        <div class="px-6 md:px-8 pt-6 border-b border-gray-200">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">ระบบจัดการรับชำระเงิน (แผนไทย)</h1>
+                <div class="flex items-center text-sm text-gray-500">
+                    <div class="loader mr-2" id="globalLoader"></div>
+                    <span id="statusText">กำลังเตรียมระบบ...</span>
+                </div>
+            </div>
+            <div class="flex space-x-6 overflow-x-auto">
+                <button onclick="switchTab('form')" id="tab-form" class="pb-3 px-1 font-medium text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap">บันทึกข้อมูลบริการ</button>
+                <button onclick="switchTab('report')" id="tab-report" class="pb-3 px-1 font-medium text-gray-500 hover:text-gray-800 transition border-b-2 border-transparent whitespace-nowrap">รายงานผลการทำงาน</button>
+                <button onclick="switchTab('settings')" id="tab-settings" class="pb-3 px-1 font-medium text-gray-500 hover:text-gray-800 transition border-b-2 border-transparent whitespace-nowrap">ตั้งค่าระบบ</button>
+            </div>
+        </div>
+
+        <div class="p-6 md:p-8">
+            
+            <!-- ================= VIEW: FORM ================= -->
+            <div id="view-form" class="space-y-6">
+                
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-lg font-bold text-gray-700">ภาพรวมประจำวัน</h2>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm text-gray-600">แสดงข้อมูล ณ วันที่:</label>
+                        <input type="date" id="dashFilterDate" onchange="loadInitData()" class="rounded-lg border-gray-300 border p-1.5 outline-none text-sm focus:border-blue-500">
+                        <button onclick="loadInitData(true)" class="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition" title="รีเฟรชข้อมูล">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard Box -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div onclick="openDashboardModal('today')" class="cursor-pointer bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow flex flex-col justify-center hover:shadow-lg transition transform hover:-translate-y-1">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm opacity-90 font-medium">ออกใบเสร็จแล้ว <span id="dash-date-label1">(วันนี้)</span></p>
+                            <span class="bg-white bg-opacity-20 rounded-full p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
+                        </div>
+                        <h2 class="text-3xl font-bold mt-1" id="dash-today">฿0.00</h2>
+                    </div>
+                    <div onclick="openDashboardModal('pending')" class="cursor-pointer bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl p-5 text-white shadow flex flex-col justify-center hover:shadow-lg transition transform hover:-translate-y-1">
+                        <div class="flex justify-between items-start">
+                            <p class="text-sm opacity-90 font-medium">เงินสดถือค้าง <span id="dash-date-label2">(ทั้งหมดที่ยังไม่ชำระ)</span></p>
+                            <span class="bg-white bg-opacity-20 rounded-full p-1"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></span>
+                        </div>
+                        <h2 class="text-3xl font-bold mt-1" id="dash-pending">฿0.00</h2>
+                    </div>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <form id="billingForm" class="space-y-6 pt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่รับบริการ</label>
+                            <input type="date" id="serviceDate" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เลขบัตรประชาชน</label>
+                            <input type="text" id="idCard" required maxlength="13" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="13 หลัก">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล</label>
+                            <input type="text" id="patientName" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">สิทธิ์การรักษา</label>
+                            <select id="patientRight" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500 bg-white">
+                                <option value="">-- เลือกสิทธิ์ --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-5">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">การวินิจฉัยโรค (พิมพ์เพื่อค้นหา)</label>
+                                <input list="diagnosisOptions" id="diagnosis" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ค้นหาการวินิจฉัย...">
+                                <datalist id="diagnosisOptions"></datalist>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ให้บริการ</label>
+                                <select id="provider" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500 bg-white">
+                                    <option value="">-- เลือกผู้ให้บริการ --</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เพิ่มรายการหัตถการ</label>
+                            <div class="flex space-x-2">
+                                <select id="itemSelect" class="flex-1 rounded-lg border-gray-300 border p-2 outline-none focus:border-blue-500 bg-white">
+                                    <option value="">-- เลือกหัตถการ --</option>
+                                </select>
+                                <button type="button" onclick="addProcedure()" class="bg-blue-100 text-blue-700 font-medium px-4 rounded-lg hover:bg-blue-200 transition">เพิ่ม</button>
+                            </div>
+                            <div id="selectedItemsContainer" class="mt-3 space-y-2 max-h-32 overflow-y-auto">
+                                <p class="text-xs text-gray-400 text-center py-2" id="emptyProcText">ยังไม่มีรายการหัตถการ</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 rounded-xl p-5 border border-blue-100">
+                        <h3 class="text-md font-semibold text-blue-800 mb-4">ข้อมูลการชำระเงินและออกเอกสาร</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">เล่มที่/เลขที่ใบเสร็จ</label>
+                                <input type="text" id="receiptNo" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ไม่บังคับ">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">เลขที่ใบแจ้งหนี้</label>
+                                <input type="text" id="invoiceNo" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ไม่บังคับ">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ค่าหัตถการ (รอบนี้)</label>
+                                <input type="number" id="procCost1" required min="0" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none bg-gray-100" readonly placeholder="รวมอัตโนมัติ">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ค่ายา (แยกลงบัญชี)</label>
+                                <input type="number" id="medCost" min="0" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="0 (ไม่บังคับ)">
+                            </div>
+                        </div>
+
+                        <div class="mt-6 border-t border-blue-200 pt-4">
+                            <label class="flex items-center space-x-3 cursor-pointer w-max">
+                                <input type="checkbox" id="isSplit" class="w-5 h-5 text-blue-600 rounded border-gray-300" onchange="toggleSplitFields()">
+                                <span class="text-gray-800 font-medium"> เก็บเงินล่วงหน้า </span>
+                            </label>
+                            
+                            <div id="splitSection" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-lg border border-gray-200">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">วันที่นัดถัดไป (กำหนดออกใบเสร็จ)</label>
+                                    <input type="date" id="nextDate" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">ค่าหัตถการ (รอบถัดไป)</label>
+                                    <input type="number" id="procCost2" min="0" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="0">
+                                    <p class="text-xs text-amber-600 mt-1">*ระบบจะบันทึกสถานะ "ค้างออกใบเสร็จ" ให้สำหรับยอดนี้</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+                        <button type="button" onclick="resetForm()" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">ล้างข้อมูล</button>
+                        <button type="submit" id="submitBtn" class="flex items-center px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm transition disabled:opacity-70">
+                            <span id="btnText">บันทึกข้อมูล</span>
+                            <div class="loader ml-2 border-white border-t-blue-600" id="submitLoader" style="width: 16px; height: 16px; border-width: 2px;"></div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ================= VIEW: REPORT ================= -->
+            <div id="view-report" class="hidden space-y-6">
+                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-wrap gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ตั้งแต่วันที่</label>
+                        <input type="date" id="startDate" class="rounded-lg border-gray-300 border p-2 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ถึงวันที่</label>
+                        <input type="date" id="endDate" class="rounded-lg border-gray-300 border p-2 outline-none">
+                    </div>
+                    <button onclick="fetchReport()" id="btnSearchReport" class="px-5 py-2 rounded-lg bg-gray-800 text-white font-medium hover:bg-gray-900 transition flex items-center">
+                        ค้นหาข้อมูล
+                        <div class="loader ml-2 border-white border-t-gray-800" id="reportLoader" style="width: 14px; height: 14px; border-width: 2px;"></div>
+                    </button>
+                    <button onclick="exportToExcel()" class="px-5 py-2 rounded-lg border border-green-600 text-green-700 font-medium hover:bg-green-50 transition ml-auto flex items-center">
+                        Export CSV
+                    </button>
+                </div>
+
+                <div class="table-container border border-gray-200 rounded-xl shadow-sm">
+                    <table id="reportTable" class="w-full">
+                        <thead>
+                            <tr>
+                                <th>วันที่รับบริการ</th>
+                                <th>ชื่อผู้ป่วย</th>
+                                <th>สิทธิ์การรักษา</th>
+                                <th>การวินิจฉัย</th>
+                                <th>รายการหัตถการ</th>
+                                <th>ค่าหัตถการ</th>
+                                <th>ค่ายา</th>
+                                <th>ผู้ให้บริการ</th>
+                                <th>ส่วนแบ่ง</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTbody" class="text-sm">
+                            <tr><td colspan="9" class="text-center py-6 text-gray-500 bg-white">กรุณาเลือกช่วงเวลาและกดค้นหา</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ================= VIEW: SETTINGS ================= -->
+            <div id="view-settings" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- ตั้งค่าคลินิก -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">ข้อมูลคลินิก</h3>
+                        <div class="space-y-4">
+                            <input type="hidden" id="settingDocId">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อคลินิก</label>
+                                <input type="text" id="clinicName" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ระบุชื่อคลินิก">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ที่อยู่ / ข้อมูลติดต่อ</label>
+                                <textarea id="clinicAddress" rows="3" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500"></textarea>
+                            </div>
+                            <button onclick="saveClinicSettings()" class="w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">บันทึกข้อมูลคลินิก</button>
+                        </div>
+                    </div>
+
+                    <!-- ตั้งค่าบุคลากร -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">จัดการบุคลากร</h3>
+                        <div class="flex space-x-2 mb-4">
+                            <input type="text" id="newProviderName" placeholder="ชื่อ-สกุล" class="flex-1 rounded-lg border-gray-300 border p-2 outline-none text-sm">
+                            <input type="number" id="newProviderShare" placeholder="ส่วนแบ่ง %" class="w-24 rounded-lg border-gray-300 border p-2 outline-none text-sm">
+                            <button onclick="addProvider()" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">เพิ่ม</button>
+                        </div>
+                        <div class="max-h-48 overflow-y-auto border rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0"><tr><th class="p-2 text-left">ชื่อ</th><th class="p-2 text-center">%</th><th class="p-2 text-center">จัดการ</th></tr></thead>
+                                <tbody id="providerListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ตั้งค่าหัตถการ -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">จัดการหัตถการและยา</h3>
+                        <div class="flex space-x-2 mb-4">
+                            <input type="text" id="newItemName" placeholder="ชื่อรายการ" class="flex-1 rounded-lg border-gray-300 border p-2 outline-none text-sm">
+                            <input type="number" id="newItemPrice" placeholder="ราคา (฿)" class="w-24 rounded-lg border-gray-300 border p-2 outline-none text-sm">
+                            <button onclick="addItem()" class="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">เพิ่ม</button>
+                        </div>
+                        <div class="max-h-48 overflow-y-auto border rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0"><tr><th class="p-2 text-left">รายการ</th><th class="p-2 text-right">ราคา</th><th class="p-2 text-center">จัดการ</th></tr></thead>
+                                <tbody id="itemListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ตั้งค่าสิทธิ์ -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">จัดการสิทธิ์การรักษา</h3>
+                        <div class="flex space-x-2 mb-4">
+                            <input type="text" id="newRightName" placeholder="ชื่อสิทธิ์" class="flex-1 rounded-lg border-gray-300 border p-2 outline-none text-sm">
+                            <button onclick="addRight()" class="px-3 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700">เพิ่ม</button>
+                        </div>
+                        <div class="max-h-48 overflow-y-auto border rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 sticky top-0"><tr><th class="p-2 text-left">สิทธิ์การรักษา</th><th class="p-2 text-center w-16">จัดการ</th></tr></thead>
+                                <tbody id="rightListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal สำหรับแสดงข้อมูล Dashboard -->
+    <div id="dashboardModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h2 class="text-xl font-bold text-gray-800" id="modalTitle">รายละเอียด</h2>
+                <button onclick="closeDashboardModal()" class="text-gray-500 hover:text-red-500 text-2xl font-bold leading-none">&times;</button>
+            </div>
+            
+            <div id="modalBody" class="modal-scroll space-y-4 pb-4">
+                <!-- เนื้อหาจะถูกเติมด้วย Javascript -->
+            </div>
+            
+            <div class="flex justify-end pt-4 border-t">
+                <button onclick="closeDashboardModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastMessage" class="toast">ข้อความแจ้งเตือน</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, updateDoc, deleteDoc, collection, getDocs, query, orderBy, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // รหัสเชื่อมต่อ Firebase ของคุณ
+        const firebaseConfig = {
+            apiKey: "AIzaSyCN8Agw8ZmjSnQjqke4dO4ghwRD_6ZG4QQ",
+            authDomain: "ttm-finance2026.firebaseapp.com",
+            projectId: "ttm-finance2026",
+            storageBucket: "ttm-finance2026.firebasestorage.app",
+            messagingSenderId: "370917202671",
+            appId: "1:370917202671:web:4449e59bae957c6953d91a",
+            measurementId: "G-7P8NC1FN8K"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Paths in Firestore
+        const PATH_SERVICE = "services";
+        const PATH_PERSONNEL = "personnel";
+        const PATH_ITEMS = "items";
+        const PATH_DIAGNOSIS = "diagnosis";
+        const PATH_RIGHTS = "rights";
+        const PATH_SETTINGS = "settings";
+
+        let currentUser = null;
+        let todayList = [];
+        let pendingList = [];
+
+        window.appState = {
+            itemsData: [],
+            selectedProcedures: [],
+            masterLoaded: false
+        };
+
+        // ตั้งค่าวันที่เริ่มต้น
+        document.getElementById('serviceDate').valueAsDate = new Date();
+        document.getElementById('dashFilterDate').valueAsDate = new Date();
+        document.getElementById('startDate').valueAsDate = new Date(new Date().setDate(1));
+        document.getElementById('endDate').valueAsDate = new Date();
+
+        window.onload = async function() {
+            try {
+                const userCredential = await signInAnonymously(auth);
+                currentUser = userCredential.user;
+                console.log("Logged in anonymously:", currentUser.uid);
+                
+                await checkAndCreateDefaults();
+                await loadInitData();
+            } catch (error) {
+                console.error("Auth Error:", error);
+                document.getElementById('statusText').textContent = "เชื่อมต่อฐานข้อมูลล้มเหลว (เช็คการตั้งค่า Auth)";
+                document.getElementById('globalLoader').style.display = 'none';
+            }
+        };
+
+        // สร้างข้อมูลเริ่มต้นกรณีฐานข้อมูลว่างเปล่า
+        async function checkAndCreateDefaults() {
+            const rightsSnap = await getDocs(collection(db, PATH_RIGHTS));
+            if (rightsSnap.empty) {
+                const defaultRights = ["UC", "ข้าราชการ(กรมบัญชีกลาง)", "ข้าราชการ(อปท)", "รัฐวิสาหกิจ", "ประกันสังคม", "ชำระเงินเอง"];
+                for (let r of defaultRights) await addDoc(collection(db, PATH_RIGHTS), { name: r });
+                
+                await addDoc(collection(db, PATH_PERSONNEL), { name: "นวดไทย 1", role: "ผู้ให้บริการ", sharePercent: 50 });
+                await addDoc(collection(db, PATH_ITEMS), { name: "นวดไทย 1 ชั่วโมง", price: 200, type: "หัตถการ" });
+                await addDoc(collection(db, PATH_DIAGNOSIS), { code: "U50", name: "ลมปลายปัตคาต" });
+            }
+        }
+
+        window.showToast = function(message, isSuccess = true) {
+            const toast = document.getElementById("toastMessage");
+            toast.textContent = message;
+            toast.className = `toast show ${isSuccess ? 'success' : 'error'}`;
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        window.switchTab = function(tabName) {
+            document.getElementById('view-form').classList.add('hidden');
+            document.getElementById('view-report').classList.add('hidden');
+            document.getElementById('view-settings').classList.add('hidden');
+            
+            document.getElementById('tab-form').classList.replace('text-blue-600', 'text-gray-500');
+            document.getElementById('tab-form').classList.replace('border-blue-600', 'border-transparent');
+            document.getElementById('tab-report').classList.replace('text-blue-600', 'text-gray-500');
+            document.getElementById('tab-report').classList.replace('border-blue-600', 'border-transparent');
+            document.getElementById('tab-settings').classList.replace('text-blue-600', 'text-gray-500');
+            document.getElementById('tab-settings').classList.replace('border-blue-600', 'border-transparent');
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.replace('text-gray-500', 'text-blue-600');
+            document.getElementById(`tab-${tabName}`).classList.replace('border-transparent', 'border-blue-600');
+            
+            if (tabName === 'settings') {
+                loadSettingsPage();
+            } else if (tabName === 'form' && !appState.masterLoaded) {
+                loadInitData(true);
+            }
+        }
+
+        window.addProcedure = function() {
+            const select = document.getElementById('itemSelect');
+            const idx = select.value;
+            if(idx === "") return;
+            const item = appState.itemsData[idx];
+            appState.selectedProcedures.push(item);
+            renderSelectedProcedures();
+            select.value = "";
+        }
+
+        window.removeProcedure = function(index) {
+            appState.selectedProcedures.splice(index, 1);
+            renderSelectedProcedures();
+        }
+
+        function renderSelectedProcedures() {
+            const container = document.getElementById('selectedItemsContainer');
+            const emptyText = document.getElementById('emptyProcText');
+            
+            if(appState.selectedProcedures.length === 0) {
+                container.innerHTML = '';
+                container.appendChild(emptyText);
+                emptyText.style.display = 'block';
+                document.getElementById('procCost1').value = "";
+                return;
+            }
+            
+            emptyText.style.display = 'none';
+            container.innerHTML = '';
+            let sumCost = 0;
+
+            appState.selectedProcedures.forEach((item, index) => {
+                sumCost += item.price;
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm";
+                div.innerHTML = `
+                    <span class="text-sm text-gray-800">${item.name}</span>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm font-medium text-blue-600">฿${item.price}</span>
+                        <button type="button" onclick="removeProcedure(${index})" class="text-red-400 hover:text-red-600 font-bold px-1 text-lg leading-none">&times;</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            document.getElementById('procCost1').value = sumCost;
+        }
+
+        window.toggleSplitFields = function() {
+            const isChecked = document.getElementById('isSplit').checked;
+            const splitSection = document.getElementById('splitSection');
+            const nextDate = document.getElementById('nextDate');
+            const procCost2 = document.getElementById('procCost2');
+
+            if (isChecked) {
+                splitSection.classList.remove('hidden');
+                nextDate.required = true;
+                procCost2.required = true;
+                let d = new Date(document.getElementById('serviceDate').value);
+                d.setDate(d.getDate() + 2);
+                nextDate.valueAsDate = d;
+                procCost2.value = document.getElementById('procCost1').value;
+            } else {
+                splitSection.classList.add('hidden');
+                nextDate.required = false;
+                procCost2.required = false;
+                nextDate.value = '';
+                procCost2.value = '';
+            }
+        }
+
+        window.resetForm = function() {
+            document.getElementById('billingForm').reset();
+            document.getElementById('serviceDate').valueAsDate = new Date();
+            appState.selectedProcedures = [];
+            renderSelectedProcedures();
+            document.getElementById('isSplit').checked = false;
+            toggleSplitFields();
+        }
+
+        window.loadInitData = async function(forceRefresh = false) {
+            document.getElementById('globalLoader').style.display = 'block';
+            document.getElementById('statusText').textContent = "กำลังโหลดข้อมูล...";
+
+            try {
+                // โหลด Master Data ครั้งแรกหรือเมื่อบังคับโหลด
+                if (!appState.masterLoaded || forceRefresh) {
+                    const [diagSnap, rightsSnap, provSnap, itemsSnap] = await Promise.all([
+                        getDocs(collection(db, PATH_DIAGNOSIS)),
+                        getDocs(collection(db, PATH_RIGHTS)),
+                        getDocs(collection(db, PATH_PERSONNEL)),
+                        getDocs(collection(db, PATH_ITEMS))
+                    ]);
+
+                    const dlDiag = document.getElementById('diagnosisOptions');
+                    dlDiag.innerHTML = '';
+                    diagSnap.forEach(doc => { dlDiag.innerHTML += `<option value="${doc.data().code} ${doc.data().name}">`; });
+
+                    const selRight = document.getElementById('patientRight');
+                    selRight.innerHTML = '<option value="">-- เลือกสิทธิ์ --</option>';
+                    rightsSnap.forEach(doc => { selRight.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`; });
+
+                    const selProv = document.getElementById('provider');
+                    selProv.innerHTML = '<option value="">-- เลือกผู้ให้บริการ --</option>';
+                    provSnap.forEach(doc => { selProv.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`; });
+
+                    appState.itemsData = [];
+                    const selItem = document.getElementById('itemSelect');
+                    selItem.innerHTML = '<option value="">-- เลือกหัตถการ --</option>';
+                    let idx = 0;
+                    itemsSnap.forEach(doc => {
+                        const data = doc.data();
+                        appState.itemsData.push({ id: doc.id, name: data.name, price: data.price });
+                        selItem.innerHTML += `<option value="${idx}">${data.name} (฿${data.price})</option>`;
+                        idx++;
+                    });
+                    appState.masterLoaded = true;
+                }
+
+                // โหลด Dashboard 
+                const targetDate = document.getElementById('dashFilterDate').value;
+                const dateObj = new Date(targetDate);
+                const isToday = targetDate === new Date().toISOString().split('T')[0];
+
+                document.getElementById('dash-date-label1').textContent = isToday ? "(วันนี้)" : `(${targetDate})`;
+                document.getElementById('dash-date-label2').textContent = isToday ? "(ทั้งหมดที่ค้าง)" : `(เฉพาะที่มารับบริการ ${targetDate})`;
+
+                // ดึงข้อมูลบริการทั้งหมด (ในระบบ Production ควรใช้ query แยกวันที่เพื่อประหยัด Read)
+                const serviceSnap = await getDocs(collection(db, PATH_SERVICE));
+                
+                let todayTotal = 0;
+                let pendingTotal = 0;
+                todayList = [];
+                pendingList = [];
+
+                serviceSnap.forEach(d => {
+                    const data = d.data();
+                    const rowDate = data.serviceDate;
+                    const totalCost = (parseFloat(data.procCost) || 0) + (parseFloat(data.medCost) || 0);
+                    
+                    const isTargetDate = rowDate === targetDate;
+
+                    if (isTargetDate && data.status === 'ออกใบเสร็จแล้ว') {
+                        todayTotal += totalCost;
+                        todayList.push({ id: d.id, ...data, totalCost });
+                    }
+
+                    const shouldShowPending = isToday ? (data.status === 'ค้างออกใบเสร็จ') : (isTargetDate && data.status === 'ค้างออกใบเสร็จ');
+                    if (shouldShowPending) {
+                        pendingTotal += totalCost;
+                        pendingList.push({ id: d.id, ...data, totalCost });
+                    }
+                });
+
+                const formatMoney = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
+                document.getElementById('dash-today').textContent = formatMoney(todayTotal);
+                document.getElementById('dash-pending').textContent = formatMoney(pendingTotal);
+
+                document.getElementById('statusText').textContent = "ระบบพร้อมใช้งาน";
+            } catch (error) {
+                console.error("Load Error:", error);
+                document.getElementById('statusText').textContent = "โหลดข้อมูลล้มเหลว";
+            } finally {
+                document.getElementById('globalLoader').style.display = 'none';
+            }
+        }
+
+        document.getElementById('billingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (appState.selectedProcedures.length === 0) {
+                showToast("กรุณาเพิ่มรายการหัตถการอย่างน้อย 1 รายการ", false);
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            const loader = document.getElementById('submitLoader');
+            btn.disabled = true;
+            loader.style.display = 'block';
+
+            const procedureText = appState.selectedProcedures.map(i => i.name).join(', ');
+            const receipt = document.getElementById('receiptNo').value.trim();
+            const invoice = document.getElementById('invoiceNo').value.trim();
+            const isReceiptEmpty = (receipt === "" || receipt === "-") && (invoice === "" || invoice === "-");
+            let initialStatus = isReceiptEmpty ? 'ค้างออกใบเสร็จ' : 'ออกใบเสร็จแล้ว';
+
+            const payload1 = {
+                serviceDate: document.getElementById('serviceDate').value,
+                idCard: document.getElementById('idCard').value,
+                patientName: document.getElementById('patientName').value,
+                patientRight: document.getElementById('patientRight').value,
+                diagnosis: document.getElementById('diagnosis').value,
+                procedure: procedureText,
+                provider: document.getElementById('provider').value,
+                receiptNo: receipt || "-",
+                invoiceNo: invoice || "-",
+                procCost: parseFloat(document.getElementById('procCost1').value) || 0,
+                medCost: parseFloat(document.getElementById('medCost').value) || 0,
+                status: initialStatus,
+                timestamp: Timestamp.now()
+            };
+
+            try {
+                await addDoc(collection(db, PATH_SERVICE), payload1);
+
+                if (document.getElementById('isSplit').checked) {
+                    const payload2 = {
+                        ...payload1,
+                        serviceDate: document.getElementById('nextDate').value,
+                        procCost: parseFloat(document.getElementById('procCost2').value) || 0,
+                        medCost: 0,
+                        receiptNo: "-",
+                        invoiceNo: "-",
+                        status: 'ค้างออกใบเสร็จ',
+                        timestamp: Timestamp.now()
+                    };
+                    await addDoc(collection(db, PATH_SERVICE), payload2);
+                }
+
+                if(isReceiptEmpty) {
+                    showToast("บันทึกสำเร็จ (สถานะ: ค้างออกใบเสร็จ เนื่องจากไม่ใส่เลขใบเสร็จ)", true);
+                } else {
+                    showToast("บันทึกข้อมูลและออกใบเสร็จสำเร็จ!", true);
+                }
+                
+                resetForm();
+                loadInitData();
+            } catch (error) {
+                console.error("Save Error:", error);
+                showToast("บันทึกข้อมูลล้มเหลว", false);
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        });
+
+        window.openDashboardModal = function(type) {
+            const modal = document.getElementById('dashboardModal');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            
+            modal.style.display = "block";
+            document.body.style.overflow = "hidden";
+            body.innerHTML = '';
+
+            const formatMoney = (num) => Number(num).toLocaleString('th-TH', {minimumFractionDigits: 2});
+
+            if (type === 'today') {
+                title.textContent = "รายการออกใบเสร็จแล้ว";
+                if(todayList.length === 0) {
+                    body.innerHTML = '<p class="text-center text-gray-500 py-6">ไม่มีรายการในวันนี้</p>';
+                    return;
+                }
+                
+                let html = `<table class="w-full text-sm mt-2"><thead class="bg-emerald-50"><tr><th class="p-2">วันที่</th><th class="p-2">ชื่อผู้ป่วย</th><th class="p-2">หัตถการ</th><th class="p-2 text-right">ยอดรวม</th></tr></thead><tbody class="divide-y">`;
+                todayList.forEach(item => {
+                    html += `<tr><td class="p-2">${item.serviceDate}</td><td class="p-2">${item.patientName}</td><td class="p-2">${item.procedure}</td><td class="p-2 text-right font-medium text-emerald-600">฿${formatMoney(item.totalCost)}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+                body.innerHTML = html;
+
+            } else if (type === 'pending') {
+                title.textContent = "รายการค้างออกใบเสร็จ (เงินสดถือค้าง)";
+                if(pendingList.length === 0) {
+                    body.innerHTML = '<p class="text-center text-gray-500 py-6">ไม่มีรายการค้างชำระ</p>';
+                    return;
+                }
+
+                pendingList.forEach((item, index) => {
+                    const card = document.createElement('div');
+                    card.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 mb-3 shadow-sm";
+                    
+                    let origCost = parseFloat(item.procCost) || 0;
+
+                    card.innerHTML = `
+                        <!-- ข้อมูลเดิม -->
+                        <div class="mb-3 pb-3 border-b border-amber-200">
+                            <div class="flex justify-between items-start mb-1">
+                                <h4 class="font-bold text-amber-900 text-base">${item.patientName}</h4>
+                                <span class="bg-amber-200 text-amber-800 text-xs px-2 py-1 rounded font-medium">รอใบเสร็จ</span>
+                            </div>
+                            <p class="text-xs text-amber-700"><strong>วันที่รับบริการ:</strong> ${item.serviceDate} | <strong>ผู้ให้บริการ:</strong> ${item.provider}</p>
+                            <p class="text-xs text-amber-700"><strong>สิทธิ์:</strong> ${item.patientRight} | <strong>วินิจฉัย:</strong> ${item.diagnosis}</p>
+                            <p class="text-xs text-amber-700"><strong>หัตถการ:</strong> ${item.procedure}</p>
+                        </div>
+
+                        <!-- ฟอร์มอัปเดต -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">วันที่ออกใบเสร็จ (แก้ได้)</label>
+                                <input type="date" id="p-date-${index}" value="${item.serviceDate}" class="w-full rounded border-gray-300 border p-2 text-sm outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">ค่าหัตถการ (฿)</label>
+                                <input type="number" id="p-cost-${index}" value="${origCost}" class="w-full rounded border-gray-300 border p-2 text-sm outline-none text-right font-medium text-emerald-700">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">เลขที่ใบเสร็จ <span class="text-red-500">*</span></label>
+                                <input type="text" id="p-receipt-${index}" placeholder="ระบุเลขที่..." class="w-full rounded border-amber-400 border p-2 text-sm outline-none focus:border-amber-600 bg-white">
+                            </div>
+                        </div>
+                        <div class="mt-3 flex justify-end">
+                            <button onclick="updatePendingReceipt('${item.id}', ${index})" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition shadow-sm">บันทึกเป็น 'ออกใบเสร็จแล้ว'</button>
+                        </div>
+                    `;
+                    body.appendChild(card);
+                });
+            }
+        }
+
+        window.closeDashboardModal = function() {
+            document.getElementById('dashboardModal').style.display = "none";
+            document.body.style.overflow = "auto";
+        }
+
+        window.updatePendingReceipt = async function(docId, index) {
+            const newDate = document.getElementById(`p-date-${index}`).value;
+            const newCost = document.getElementById(`p-cost-${index}`).value;
+            const newReceipt = document.getElementById(`p-receipt-${index}`).value.trim();
+
+            if (!newReceipt) {
+                alert("กรุณาระบุเลขที่ใบเสร็จก่อนทำการบันทึก");
+                return;
+            }
+
+            try {
+                await updateDoc(doc(db, PATH_SERVICE, docId), {
+                    serviceDate: newDate,
+                    procCost: parseFloat(newCost) || 0,
+                    receiptNo: newReceipt,
+                    status: 'ออกใบเสร็จแล้ว'
+                });
+
+                showToast("อัปเดตใบเสร็จเรียบร้อย!", true);
+                closeDashboardModal();
+                loadInitData();
+            } catch (error) {
+                console.error("Update Error:", error);
+                showToast("อัปเดตล้มเหลว", false);
+            }
+        }
+
+        window.fetchReport = async function() {
+            const btn = document.getElementById('btnSearchReport');
+            const loader = document.getElementById('reportLoader');
+            const tbody = document.getElementById('reportTbody');
+            
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            
+            btn.disabled = true;
+            loader.style.display = 'block';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-500">กำลังโหลดข้อมูล...</td></tr>';
+
+            try {
+                // โหลด Share ของพนักงาน
+                const pSnap = await getDocs(collection(db, PATH_PERSONNEL));
+                const shares = {};
+                pSnap.forEach(d => { shares[d.data().name] = parseFloat(d.data().sharePercent) || 0; });
+
+                const q = query(collection(db, PATH_SERVICE), where("serviceDate", ">=", start), where("serviceDate", "<=", end));
+                const snap = await getDocs(q);
+
+                tbody.innerHTML = '';
+                if (snap.empty) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-500">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>';
+                } else {
+                    const formatMoney = (num) => Number(num).toLocaleString('th-TH', {minimumFractionDigits: 2});
+                    
+                    snap.forEach(doc => {
+                        const row = doc.data();
+                        const procCost = parseFloat(row.procCost) || 0;
+                        const medCost = parseFloat(row.medCost) || 0;
+                        
+                        let sharePercent = shares[row.provider] || 0;
+                        if(sharePercent > 1) sharePercent = sharePercent / 100;
+                        const providerIncome = procCost * sharePercent;
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-gray-50">
+                                <td>${row.serviceDate}</td>
+                                <td>${row.patientName}</td>
+                                <td><span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${row.patientRight}</span></td>
+                                <td>${row.diagnosis}</td>
+                                <td class="whitespace-normal min-w-[150px]">${row.procedure}</td>
+                                <td class="text-right">฿${formatMoney(procCost)}</td>
+                                <td class="text-right">฿${formatMoney(medCost)}</td>
+                                <td>${row.provider}</td>
+                                <td class="text-right font-medium text-emerald-600">฿${formatMoney(providerIncome)}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (error) {
+                console.error("Report Error:", error);
+                showToast("ไม่สามารถโหลดรายงานได้", false);
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        window.exportToExcel = function() {
+            const table = document.getElementById("reportTable");
+            let csv = [];
+            
+            let headers = [];
+            table.querySelectorAll("thead th").forEach(th => { headers.push('"' + th.innerText + '"'); });
+            csv.push(headers.join(","));
+            
+            const rows = table.querySelectorAll("tbody tr");
+            if(rows.length === 1 && rows[0].innerText.includes("ไม่พบข้อมูล")) {
+                showToast("ไม่มีข้อมูลให้ Export", false);
+                return;
+            }
+
+            rows.forEach(tr => {
+                let row = [];
+                tr.querySelectorAll("td").forEach(td => {
+                    let text = td.innerText.replace('฿', '').replace(/,/g, '').trim();
+                    row.push('"' + text + '"');
+                });
+                csv.push(row.join(","));
+            });
+            
+            let csvContent = "\uFEFF" + csv.join("\n");
+            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            
+            link.href = URL.createObjectURL(blob);
+            link.download = `รายงานคลินิก_${start}_ถึง_${end}.csv`;
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.loadSettingsPage = async function() {
+            document.getElementById('globalLoader').style.display = 'block';
+            document.getElementById('statusText').textContent = "กำลังโหลดข้อมูลการตั้งค่า...";
+            try {
+                // Clinic Info
+                const setSnap = await getDocs(collection(db, PATH_SETTINGS));
+                if (!setSnap.empty) {
+                    const docData = setSnap.docs[0];
+                    document.getElementById('settingDocId').value = docData.id;
+                    document.getElementById('clinicName').value = docData.data().clinicName || "";
+                    document.getElementById('clinicAddress').value = docData.data().clinicAddress || "";
+                }
+
+                // Providers
+                const pSnap = await getDocs(collection(db, PATH_PERSONNEL));
+                const pBody = document.getElementById('providerListBody');
+                pBody.innerHTML = '';
+                pSnap.forEach(d => {
+                    pBody.innerHTML += `<tr class="hover:bg-gray-50"><td class="p-3">${d.data().name}</td><td class="p-3 text-center">${d.data().sharePercent}%</td><td class="p-3 text-center"><button onclick="deleteMasterData('${PATH_PERSONNEL}', '${d.id}')" class="text-red-500 hover:text-red-700 font-bold">ลบ</button></td></tr>`;
+                });
+
+                // Items
+                const iSnap = await getDocs(collection(db, PATH_ITEMS));
+                const iBody = document.getElementById('itemListBody');
+                iBody.innerHTML = '';
+                iSnap.forEach(d => {
+                    iBody.innerHTML += `<tr class="hover:bg-gray-50"><td class="p-3">${d.data().name}</td><td class="p-3 text-right">฿${d.data().price}</td><td class="p-3 text-center"><button onclick="deleteMasterData('${PATH_ITEMS}', '${d.id}')" class="text-red-500 hover:text-red-700 font-bold">ลบ</button></td></tr>`;
+                });
+
+                // Rights
+                const rSnap = await getDocs(collection(db, PATH_RIGHTS));
+                const rBody = document.getElementById('rightListBody');
+                rBody.innerHTML = '';
+                rSnap.forEach(d => {
+                    rBody.innerHTML += `<tr class="hover:bg-gray-50"><td class="p-3">${d.data().name}</td><td class="p-3 text-center"><button onclick="deleteMasterData('${PATH_RIGHTS}', '${d.id}')" class="text-red-500 hover:text-red-700 font-bold">ลบ</button></td></tr>`;
+                });
+
+                document.getElementById('statusText').textContent = "โหลดการตั้งค่าสำเร็จ";
+            } catch (e) {
+                console.error(e);
+                showToast("โหลดการตั้งค่าไม่สำเร็จ", false);
+            } finally {
+                document.getElementById('globalLoader').style.display = 'none';
+            }
+        }
+
+        window.saveClinicSettings = async function() {
+            const name = document.getElementById('clinicName').value;
+            const address = document.getElementById('clinicAddress').value;
+            const docId = document.getElementById('settingDocId').value;
+            
+            try {
+                if (docId) {
+                    await updateDoc(doc(db, PATH_SETTINGS, docId), { clinicName: name, clinicAddress: address });
+                } else {
+                    await addDoc(collection(db, PATH_SETTINGS), { clinicName: name, clinicAddress: address });
+                }
+                showToast("บันทึกข้อมูลคลินิกสำเร็จ", true);
+            } catch (e) {
+                showToast("บันทึกล้มเหลว", false);
+            }
+        }
+
+        window.addProvider = async function() {
+            const name = document.getElementById('newProviderName').value.trim();
+            const share = parseFloat(document.getElementById('newProviderShare').value) || 0;
+            if(!name) return showToast("กรุณากรอกชื่อบุคลากร", false);
+            
+            await addDoc(collection(db, PATH_PERSONNEL), { name: name, role: 'ผู้ให้บริการ', sharePercent: share });
+            document.getElementById('newProviderName').value = '';
+            document.getElementById('newProviderShare').value = '';
+            appState.masterLoaded = false;
+            loadSettingsPage();
+            showToast("เพิ่มบุคลากรสำเร็จ", true);
+        }
+
+        window.addItem = async function() {
+            const name = document.getElementById('newItemName').value.trim();
+            const price = parseFloat(document.getElementById('newItemPrice').value) || 0;
+            if(!name) return showToast("กรุณากรอกชื่อรายการ", false);
+            
+            await addDoc(collection(db, PATH_ITEMS), { name: name, price: price });
+            document.getElementById('newItemName').value = '';
+            document.getElementById('newItemPrice').value = '';
+            appState.masterLoaded = false;
+            loadSettingsPage();
+            showToast("เพิ่มรายการสำเร็จ", true);
+        }
+
+        window.addRight = async function() {
+            const name = document.getElementById('newRightName').value.trim();
+            if(!name) return showToast("กรุณากรอกชื่อสิทธิ์", false);
+            
+            await addDoc(collection(db, PATH_RIGHTS), { name: name });
+            document.getElementById('newRightName').value = '';
+            appState.masterLoaded = false;
+            loadSettingsPage();
+            showToast("เพิ่มสิทธิ์การรักษาสำเร็จ", true);
+        }
+
+        window.deleteMasterData = async function(path, docId) {
+            if(!confirm("คุณต้องการลบข้อมูลนี้ใช่หรือไม่?")) return;
+            try {
+                await deleteDoc(doc(db, path, docId));
+                appState.masterLoaded = false;
+                loadSettingsPage(); 
+                showToast("ลบข้อมูลสำเร็จ", true);
+            } catch (e) {
+                showToast("ลบข้อมูลล้มเหลว", false);
+            }
+        }
+    </script>
+</body>
+</html>
