@@ -1,923 +1,417 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกบริการและรับชำระเงิน - คลินิกแพทย์แผนไทย</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Sarabun', 'Inter', sans-serif; background-color: #f3f4f6; }
-        .toast {
-            visibility: hidden; min-width: 250px; background-color: #333; color: #fff;
-            text-align: center; border-radius: 8px; padding: 16px; position: fixed;
-            z-index: 50; left: 50%; bottom: 30px; transform: translateX(-50%);
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.2); transition: visibility 0s, opacity 0.5s linear; opacity: 0;
-        }
-        .toast.show { visibility: visible; opacity: 1; }
-        .toast.success { background-color: #10B981; }
-        .toast.error { background-color: #EF4444; }
-        .loader {
-            border: 3px solid #f3f3f3; border-top: 3px solid #3B82F6; border-radius: 50%;
-            width: 20px; height: 20px; animation: spin 1s linear infinite; display: none;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .table-container { overflow-x: auto; }
-        table { border-collapse: collapse; width: 100%; min-width: 900px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
-        th { background-color: #f9fafb; font-weight: 600; color: #374151; }
-        
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบเคสหมอนวด - รพ.สต.มะขามสูง</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --purple-dark: #2E1065;
+      --purple-primary: #581C87;
+      --purple-medium: #7E22CE;
+      --purple-light: #FAF5FF;
+      --gold-primary: #B45309;
+      --gold-accent: #F59E0B;
+      --gold-light: #FEF3C7;
+      --text-main: #1F2937;
+      --text-muted: #6B7280;
+      --white: #FFFFFF;
+      --success: #059669;
+      --danger: #DC2626;
+      --card-shadow: 0 4px 12px rgba(46, 16, 101, 0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
+    body { background: linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%); color: var(--text-main); min-height: 100vh; padding: 16px; }
+    .container { max-width: 920px; margin: 0 auto; }
+
+    header {
+      background: linear-gradient(135deg, var(--purple-dark) 0%, var(--purple-primary) 100%);
+      color: var(--white);
+      padding: 22px;
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      border-bottom: 4px solid var(--gold-accent);
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-text h1 { font-size: 1.35rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .header-text h1 span { color: var(--gold-accent); }
+    .header-text p { font-size: 0.9rem; color: #E9D5FF; margin-top: 4px; }
+
+    .btn-settings {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-light);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .api-banner {
+      display: none;
+      background: var(--gold-light);
+      border: 1.5px solid var(--gold-accent);
+      padding: 14px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--white);
+      padding: 18px;
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      margin-bottom: 16px;
+      border: 1px solid #E9D5FF;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.85rem; font-weight: 600; color: var(--purple-dark); }
+    .form-control {
+      padding: 10px 12px;
+      border: 1.5px solid #D8B4FE;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      outline: none;
+    }
+    .form-control:focus { border-color: var(--purple-medium); box-shadow: 0 0 0 3px rgba(126, 34, 206, 0.15); }
+
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--purple-primary), var(--purple-medium)); color: var(--white); }
+    .btn-gold { background: linear-gradient(135deg, var(--gold-accent), var(--gold-primary)); color: var(--white); }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi-card {
+      background: var(--white);
+      padding: 16px;
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      text-align: center;
+      position: relative;
+      border: 1px solid #F3E8FF;
+    }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+    .kpi-total::before { background: var(--purple-medium); }
+    .kpi-issued::before { background: var(--success); }
+    .kpi-pending::before { background: var(--danger); }
+    .kpi-title { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+    .kpi-value { font-size: 2.1rem; font-weight: 700; }
+    .kpi-total .kpi-value { color: var(--purple-dark); }
+    .kpi-issued .kpi-value { color: var(--success); }
+    .kpi-pending .kpi-value { color: var(--danger); }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--purple-dark);
+      padding: 12px 16px;
+      background: #FAF5FF;
+      border-bottom: 1px solid #E9D5FF;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: var(--purple-dark);
+      color: var(--gold-light);
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    td { padding: 10px 14px; font-size: 0.92rem; border-bottom: 1px solid #F3E8FF; white-space: nowrap; }
+    tr:nth-child(even) { background-color: #FAF5FF; }
+
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 16px; font-size: 0.85rem; font-weight: 600; }
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-warning { background: #FEE2E2; color: #991B1B; }
+    .badge-purple { background: #E9D5FF; color: var(--purple-dark); }
+    .state-msg { text-align: center; padding: 30px; color: var(--purple-medium); }
+  </style>
 </head>
-<body class="text-gray-800 antialiased p-4 md:p-8">
+<body>
+  <div class="container">
+    <header>
+      <div class="header-text">
+        <h1><span>✦</span> รพ.สต.มะขามสูง | สรุปเคสหมอนวด</h1>
+        <p>ตรวจสอบจำนวนเคส และประเภทหัตถการที่ให้บริการ</p>
+      </div>
+      <button class="btn-settings" onclick="toggleApiBanner()">⚙️ ตั้งค่า Web App URL</button>
+    </header>
 
-    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        
-        <div class="px-6 md:px-8 pt-6 border-b border-gray-200">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-gray-800">ระบบจัดการรับชำระเงิน (แผนไทย)</h1>
-                <div class="flex items-center text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 mr-2" id="connStatus"></div>
-                    <span id="statusText">กำลังเชื่อมต่อ...</span>
-                </div>
-            </div>
-            <div class="flex space-x-6 overflow-x-auto no-scrollbar">
-                <button onclick="switchTab('form')" id="tab-form" class="pb-3 px-1 font-medium text-blue-600 border-b-2 border-blue-600 transition whitespace-nowrap">บันทึกข้อมูลบริการ</button>
-                <button onclick="switchTab('report')" id="tab-report" class="pb-3 px-1 font-medium text-gray-500 hover:text-gray-800 transition border-b-2 border-transparent whitespace-nowrap">รายงานผลการทำงาน</button>
-                <button onclick="switchTab('settings')" id="tab-settings" class="pb-3 px-1 font-medium text-gray-500 hover:text-gray-800 transition border-b-2 border-transparent whitespace-nowrap">ตั้งค่าระบบ</button>
-            </div>
-        </div>
-
-        <div class="p-6 md:p-8">
-            <div id="view-form" class="space-y-6">
-                <!-- Dashboard Box -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl p-5 text-white shadow flex flex-col justify-center">
-                        <p class="text-sm opacity-90 font-medium">ออกใบเสร็จแล้ว (เฉพาะวันนี้)</p>
-                        <h2 class="text-3xl font-bold mt-1" id="dash-today">฿0.00</h2>
-                    </div>
-                    <div class="bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl p-5 text-white shadow flex flex-col justify-center">
-                        <p class="text-sm opacity-90 font-medium">เงินสดถือค้าง (ทุกรายการที่ยังไม่ออกใบเสร็จ)</p>
-                        <h2 class="text-3xl font-bold mt-1" id="dash-pending">฿0.00</h2>
-                    </div>
-                </div>
-
-                <form id="billingForm" class="space-y-6 pt-4">
-                    <!-- ข้อมูลผู้ป่วย -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่รับบริการ</label>
-                            <input type="date" id="serviceDate" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">เลขบัตรประชาชน</label>
-                            <input type="text" id="idCard" required maxlength="13" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="13 หลัก">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล</label>
-                            <input type="text" id="patientName" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">สิทธิ์การรักษา</label>
-                            <select id="patientRight" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500 bg-white">
-                                <option value="">-- กำลังโหลด --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- ข้อมูลการรักษา & หัตถการ -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-5">
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">การวินิจฉัยโรค (พิมพ์เพื่อค้นหา)</label>
-                                <input list="diagnosisOptions" id="diagnosis" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ค้นหาการวินิจฉัย...">
-                                <datalist id="diagnosisOptions"></datalist>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ให้บริการ</label>
-                                <select id="provider" required class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500 bg-white">
-                                    <option value="">-- กำลังโหลด --</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">เพิ่มรายการหัตถการ</label>
-                            <div class="flex space-x-2">
-                                <select id="itemSelect" class="flex-1 rounded-lg border-gray-300 border p-2 outline-none focus:border-blue-500 bg-white">
-                                    <option value="">-- กำลังโหลด --</option>
-                                </select>
-                                <button type="button" onclick="addProcedure()" class="bg-blue-100 text-blue-700 font-medium px-4 rounded-lg hover:bg-blue-200 transition">เพิ่ม</button>
-                            </div>
-                            
-                            <div id="selectedItemsContainer" class="mt-3 space-y-2 max-h-32 overflow-y-auto">
-                                <p class="text-xs text-gray-400 text-center py-2" id="emptyProcText">ยังไม่มีรายการหัตถการ</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ข้อมูลการเงิน เอกสาร -->
-                    <div class="bg-blue-50 rounded-xl p-5 border border-blue-100">
-                        <h3 class="text-md font-semibold text-blue-800 mb-4">ข้อมูลการชำระเงินและออกเอกสาร</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">เล่มที่/เลขที่ใบเสร็จ</label>
-                                <input type="text" id="receiptNo" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ไม่บังคับ">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">เลขที่ใบแจ้งหนี้</label>
-                                <input type="text" id="invoiceNo" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="ไม่บังคับ">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ค่าหัตถการ (รอบนี้)</label>
-                                <input type="number" id="procCost1" required min="0" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none bg-gray-100 font-bold text-blue-700" readonly placeholder="รวมอัตโนมัติ">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ค่ายา (แยกลงบัญชี)</label>
-                                <input type="number" id="medCost" min="0" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="0 (ไม่บังคับ)">
-                            </div>
-                        </div>
-
-                        <!-- นโยบายแยก 2 วัน -->
-                        <div class="mt-6 border-t border-blue-200 pt-4">
-                            <label class="flex items-center space-x-3 cursor-pointer w-max">
-                                <input type="checkbox" id="isSplit" class="w-5 h-5 text-blue-600 rounded border-gray-300" onchange="toggleSplitFields()">
-                                <span class="text-gray-800 font-medium">  เก็บเงินล่วงหน้า  </span>
-                            </label>
-                            
-                            <div id="splitSection" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-lg border border-gray-200">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">วันที่นัดถัดไป (กำหนดออกใบเสร็จ)</label>
-                                    <input type="date" id="nextDate" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">ค่าหัตถการ (รอบถัดไป)</label>
-                                    <input type="number" id="procCost2" min="0" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500" placeholder="0">
-                                    <p class="text-xs text-amber-600 mt-1">*ระบบจะบันทึกสถานะ "ค้างออกใบเสร็จ" ให้สำหรับยอดนี้อัตโนมัติ</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end space-x-3 pt-4 border-t">
-                        <button type="button" onclick="resetForm()" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">ล้างข้อมูล</button>
-                        <button type="submit" id="submitBtn" class="flex items-center px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-sm transition disabled:opacity-70">
-                            <span id="btnText">บันทึกข้อมูล</span>
-                            <div class="loader ml-2 border-white border-t-blue-600" id="submitLoader" style="width: 16px; height: 16px; border-width: 2px;"></div>
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div id="view-report" class="hidden space-y-6">
-                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-wrap gap-4 items-end">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">ตั้งแต่วันที่</label>
-                        <input type="date" id="startDate" class="rounded-lg border-gray-300 border p-2 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">ถึงวันที่</label>
-                        <input type="date" id="endDate" class="rounded-lg border-gray-300 border p-2 outline-none">
-                    </div>
-                    <button type="button" onclick="fetchReport()" id="btnSearchReport" class="px-5 py-2 rounded-lg bg-gray-800 text-white font-medium hover:bg-gray-900 transition flex items-center">
-                        ค้นหาข้อมูล
-                        <div class="loader ml-2 border-white border-t-gray-800" id="reportLoader" style="width: 14px; height: 14px; border-width: 2px;"></div>
-                    </button>
-                    <button type="button" onclick="exportToExcel()" class="px-5 py-2 rounded-lg border border-green-600 text-green-700 font-medium hover:bg-green-50 transition ml-auto flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Export CSV
-                    </button>
-                </div>
-
-                <div class="table-container border border-gray-200 rounded-xl">
-                    <table id="reportTable">
-                        <thead>
-                            <tr>
-                                <th>วันที่รับบริการ</th>
-                                <th>ชื่อผู้ป่วย</th>
-                                <th>สิทธิ์การรักษา</th>
-                                <th>การวินิจฉัย</th>
-                                <th>รายการหัตถการ</th>
-                                <th>ค่าหัตถการ</th>
-                                <th>ค่ายา</th>
-                                <th>สถานะ</th>
-                                <th>ผู้ให้บริการ</th>
-                                <th>รายได้ผู้ให้บริการ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportTbody" class="text-sm">
-                            <tr><td colspan="10" class="text-center py-6 text-gray-500">กรุณาเลือกช่วงเวลาและกดค้นหา</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="view-settings" class="hidden space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- 1. บุคลากร/แพทย์ -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <h3 class="font-bold text-lg mb-4 text-gray-800 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                            ผู้ให้บริการ (บุคลากร)
-                        </h3>
-                        <div class="flex gap-2 mb-4">
-                            <input type="text" id="set-personnel-name" placeholder="ชื่อ-นามสกุล" class="flex-1 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
-                            <input type="number" id="set-personnel-share" placeholder="% ส่วนแบ่ง" class="w-24 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
-                            <button type="button" id="btn-add-personnel" onclick="addSettingPersonnel()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 w-20">เพิ่ม</button>
-                        </div>
-                        <div class="border rounded-lg max-h-48 overflow-y-auto no-scrollbar">
-                            <ul id="list-personnel" class="divide-y divide-gray-100 text-sm">
-                                <li class="p-3 text-center text-gray-400">กำลังโหลด...</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- 2. หัตถการและยา -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <h3 class="font-bold text-lg mb-4 text-gray-800 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                            รายการหัตถการ / สินค้า
-                        </h3>
-                        <div class="flex gap-2 mb-4">
-                            <input type="text" id="set-item-name" placeholder="ชื่อหัตถการ" class="flex-1 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
-                            <input type="number" id="set-item-price" placeholder="ราคา (฿)" class="w-24 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
-                            <button type="button" id="btn-add-item" onclick="addSettingItem()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 w-20">เพิ่ม</button>
-                        </div>
-                        <div class="border rounded-lg max-h-48 overflow-y-auto no-scrollbar">
-                            <ul id="list-items" class="divide-y divide-gray-100 text-sm">
-                                <li class="p-3 text-center text-gray-400">กำลังโหลด...</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- 3. สิทธิ์การรักษา -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <h3 class="font-bold text-lg mb-4 text-gray-800 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
-                            สิทธิ์การรักษา
-                        </h3>
-                        <div class="flex gap-2 mb-4">
-                            <input type="text" id="set-right-name" placeholder="ชื่อสิทธิ์การรักษา" class="flex-1 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
-                            <button type="button" id="btn-add-right" onclick="addSettingRight()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 w-20">เพิ่ม</button>
-                        </div>
-                        <div class="border rounded-lg max-h-48 overflow-y-auto no-scrollbar">
-                            <ul id="list-rights" class="divide-y divide-gray-100 text-sm">
-                                <li class="p-3 text-center text-gray-400">กำลังโหลด...</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- 4. การวินิจฉัย -->
-                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                        <h3 class="font-bold text-lg mb-4 text-gray-800 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                            การวินิจฉัยโรค (รหัสและชื่อ)
-                        </h3>
-                        <div class="flex gap-2 mb-4">
-                            <input type="text" id="set-diag-name" placeholder="เช่น U77 รักษากล้ามเนื้อ..." class="flex-1 rounded-lg border border-gray-300 p-2 text-sm outline-none focus:border-blue-500">
-                            <button type="button" id="btn-add-diag" onclick="addSettingDiag()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 w-20">เพิ่ม</button>
-                        </div>
-                        <div class="border rounded-lg max-h-48 overflow-y-auto no-scrollbar">
-                            <ul id="list-diag" class="divide-y divide-gray-100 text-sm">
-                                <li class="p-3 text-center text-gray-400">กำลังโหลด...</li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                </div>
-            </div>
-        </div>
+    <div id="apiBanner" class="api-banner">
+      <label style="font-size: 0.9rem; font-weight: 600; color: var(--gold-primary);">🔗 Web App URL (Google Apps Script):</label>
+      <div style="display: flex; gap: 8px; margin-top: 6px;">
+        <input type="text" id="apiUrlInput" class="form-control" style="flex: 1;" placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="btn btn-primary" onclick="saveApiUrl()">บันทึก</button>
+      </div>
     </div>
 
-    <div id="toastMessage" class="toast">ข้อความแจ้งเตือน</div>
-
-    <!-- Edit Modal (หน้าต่างแก้ไขข้อมูลในหน้าตั้งค่า) -->
-    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 transition-opacity">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center" id="editModalTitle">
-                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                แก้ไขข้อมูล
-            </h3>
-            <input type="hidden" id="edit-collection">
-            <input type="hidden" id="edit-id">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อรายการ</label>
-                    <input type="text" id="edit-name" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
-                </div>
-                <div id="edit-num-container" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-1" id="edit-num-label">ค่าตัวเลข</label>
-                    <input type="number" id="edit-num" class="w-full rounded-lg border-gray-300 border p-2.5 outline-none focus:border-blue-500">
-                </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6">
-                <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">ยกเลิก</button>
-                <button type="button" onclick="saveEditSetting()" id="btn-save-edit" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition flex items-center">
-                    บันทึกการแก้ไข
-                </button>
-            </div>
+    <!-- แผงค้นหา -->
+    <div class="card">
+      <div class="filter-grid">
+        <div class="form-group">
+          <label for="providerSelect">ผู้ให้บริการ (หมอนวด)</label>
+          <select id="providerSelect" class="form-control">
+            <option value="">-- กำลังโหลดรายชื่อ... --</option>
+          </select>
         </div>
+        <div class="form-group">
+          <label for="startDate">ตั้งแต่วันที่</label>
+          <input type="date" id="startDate" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="endDate">ถึงวันที่</label>
+          <input type="date" id="endDate" class="form-control">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary" style="flex: 1;" onclick="fetchData()">🔍 ค้นหา</button>
+          <button class="btn btn-gold" onclick="setToday()">วันนี้</button>
+        </div>
+      </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    <!-- KPI ยอดรวม -->
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-total">
+        <div class="kpi-title">เคสทั้งหมด</div>
+        <div class="kpi-value" id="kpiTotal">0</div>
+      </div>
+      <div class="kpi-card kpi-issued">
+        <div class="kpi-title">ออกใบเสร็จ/แจ้งหนี้แล้ว</div>
+        <div class="kpi-value" id="kpiIssued">0</div>
+      </div>
+      <div class="kpi-card kpi-pending">
+        <div class="kpi-title">ค้างยังไม่ออก</div>
+        <div class="kpi-value" id="kpiPending">0</div>
+      </div>
+    </div>
 
-        // รหัสเชื่อมต่อของคุณ
-        const firebaseConfig = {
-            apiKey: "AIzaSyCN8Agw8ZmjSnQjqke4dO4ghwRD_6ZG4QQ",
-            authDomain: "ttm-finance2026.firebaseapp.com",
-            projectId: "ttm-finance2026",
-            storageBucket: "ttm-finance2026.firebasestorage.app",
-            messagingSenderId: "370917202671",
-            appId: "1:370917202671:web:4449e59bae957c6953d91a",
-            measurementId: "G-7P8NC1FN8K"
-        };
+    <!-- 1. ตารางแจกแจงหัตถการที่ให้บริการ -->
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 16px;">
+      <div class="section-title">
+        <span>💆 รายการหัตถการที่ให้บริการ (แยกตามประเภท)</span>
+        <span id="procSubTitle" style="font-size: 0.85rem; color: var(--gold-primary); font-weight: normal;"></span>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ประเภทหัตถการ</th>
+              <th style="text-align: center;">ออกแล้ว</th>
+              <th style="text-align: center;">ค้าง</th>
+              <th style="text-align: center;">รวม (เคส)</th>
+            </tr>
+          </thead>
+          <tbody id="procTableBody">
+            <tr><td colspan="4" class="state-msg">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+    <!-- 2. ตารางสรุปเคสรายวัน -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="section-title">
+        <span>📅 ประวัติเคสรายวัน</span>
+        <span id="dailySubTitle" style="font-size: 0.85rem; color: var(--gold-primary); font-weight: normal;"></span>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>วัน</th>
+              <th style="text-align: center;">ออกแล้ว</th>
+              <th style="text-align: center;">ค้าง</th>
+              <th style="text-align: center;">รวม (เคส)</th>
+            </tr>
+          </thead>
+          <tbody id="dailyTableBody">
+            <tr><td colspan="5" class="state-msg">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-        // ตัวแปรส่วนกลาง
-        let itemsDataState = [];
-        let selectedProcedures = [];
-        let personnelSharesMap = {}; // เก็บ % ส่วนแบ่งของแพทย์ไว้ใช้คำนวณในรายงาน
+  <script>
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbyPn4vzBOh8vaEHloPIKgLZ3GtzsPRR6m1uAPjtTgR8NydS0L88xEeilQmsG7LWcFVk/exec";
 
-        window.showToast = function(message, isSuccess = true) {
-            const toast = document.getElementById("toastMessage");
-            toast.textContent = message;
-            toast.className = `toast show ${isSuccess ? 'success' : 'error'}`;
-            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
-        };
+    function getApiUrl() {
+      return localStorage.getItem('makhamsoong_gas_url') || DEFAULT_GAS_URL;
+    }
 
-        window.switchTab = function(tabName) {
-            document.getElementById('view-form').classList.add('hidden');
-            document.getElementById('view-report').classList.add('hidden');
-            document.getElementById('view-settings').classList.add('hidden');
-            
-            ['form', 'report', 'settings'].forEach(t => {
-                document.getElementById(`tab-${t}`).classList.replace('text-blue-600', 'text-gray-500');
-                document.getElementById(`tab-${t}`).classList.replace('border-blue-600', 'border-transparent');
-            });
+    function toggleApiBanner() {
+      const banner = document.getElementById('apiBanner');
+      banner.style.display = banner.style.display === 'block' ? 'none' : 'block';
+    }
 
-            document.getElementById(`view-${tabName}`).classList.remove('hidden');
-            document.getElementById(`tab-${tabName}`).classList.replace('text-gray-500', 'text-blue-600');
-            document.getElementById(`tab-${tabName}`).classList.replace('border-transparent', 'border-blue-600');
-        };
+    function saveApiUrl() {
+      const val = document.getElementById('apiUrlInput').value.trim();
+      if (!val) return alert('กรุณากรอก URL');
+      localStorage.setItem('makhamsoong_gas_url', val);
+      alert('บันทึกเรียบร้อย!');
+      toggleApiBanner();
+      initApp();
+    }
 
-        // ฟังก์ชันเปิด-ปิด Edit Modal
-        window.openEditModal = function(collectionName, id, name, num) {
-            document.getElementById('edit-collection').value = collectionName;
-            document.getElementById('edit-id').value = id;
-            document.getElementById('edit-name').value = name;
+    function formatDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
 
-            const numContainer = document.getElementById('edit-num-container');
-            const numLabel = document.getElementById('edit-num-label');
-            const numInput = document.getElementById('edit-num');
+    function setToday() {
+      const todayStr = formatDate(new Date());
+      document.getElementById('startDate').value = todayStr;
+      document.getElementById('endDate').value = todayStr;
+      fetchData();
+    }
 
-            if (collectionName === 'ttm_personnel') {
-                numContainer.classList.remove('hidden');
-                numLabel.textContent = '% ส่วนแบ่งรายได้';
-                numInput.value = num || 0;
-            } else if (collectionName === 'ttm_items') {
-                numContainer.classList.remove('hidden');
-                numLabel.textContent = 'ราคา (฿)';
-                numInput.value = num || 0;
-            } else {
-                numContainer.classList.add('hidden');
-                numInput.value = '';
-            }
+    async function callGas(params) {
+      const url = getApiUrl();
+      if (!url) throw new Error("NO_URL");
+      const res = await fetch(`${url}?${new URLSearchParams(params).toString()}`, { redirect: 'follow' });
+      return await res.json();
+    }
 
-            document.getElementById('editModal').classList.remove('hidden');
-        };
+    async function loadProviders() {
+      try {
+        const json = await callGas({ action: 'getProviders' });
+        const select = document.getElementById('providerSelect');
+        select.innerHTML = '<option value="">-- สรุปทุกคน (ภาพรวม) --</option>';
+        if (json.success && json.providers) {
+          json.providers.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = p;
+            select.appendChild(opt);
+          });
+        }
+        fetchData();
+      } catch (err) {
+        handleError(err);
+      }
+    }
 
-        window.closeEditModal = function() {
-            document.getElementById('editModal').classList.add('hidden');
-        };
+    async function fetchData() {
+      const provider = document.getElementById('providerSelect').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const procBody = document.getElementById('procTableBody');
+      const dailyBody = document.getElementById('dailyTableBody');
 
-        document.getElementById('serviceDate').valueAsDate = new Date();
-        document.getElementById('startDate').valueAsDate = new Date(new Date().setDate(1));
-        document.getElementById('endDate').valueAsDate = new Date();
+      procBody.innerHTML = '<tr><td colspan="4" class="state-msg">กำลังคำนวณหัตถการ...</td></tr>';
+      dailyBody.innerHTML = '<tr><td colspan="5" class="state-msg">กำลังประมวลผลข้อมูล...</td></tr>';
 
-        signInAnonymously(auth).catch(error => {
-            console.error("Auth Error:", error);
-            document.getElementById('connStatus').classList.replace('bg-emerald-500', 'bg-red-500');
-            document.getElementById('statusText').textContent = "เชื่อมต่อล้มเหลว (เช็ค Auth/Rules)";
-        });
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('statusText').textContent = "ออนไลน์";
-                loadDashboardData();
-                setupRealtimeListeners();
-            }
-        });
-
-        window.addProcedure = function() {
-            const select = document.getElementById('itemSelect');
-            const id = select.value;
-            if(!id) return;
-            
-            const item = itemsDataState.find(i => i.id === id);
-            if(item) {
-                selectedProcedures.push(item);
-                renderSelectedProcedures();
-                select.value = "";
-            }
-        };
-
-        window.removeProcedure = function(index) {
-            selectedProcedures.splice(index, 1);
-            renderSelectedProcedures();
-        };
-
-        function renderSelectedProcedures() {
-            const container = document.getElementById('selectedItemsContainer');
-            const emptyText = document.getElementById('emptyProcText');
-            
-            if(selectedProcedures.length === 0) {
-                container.innerHTML = '';
-                container.appendChild(emptyText);
-                emptyText.style.display = 'block';
-                document.getElementById('procCost1').value = "";
-                return;
-            }
-            
-            emptyText.style.display = 'none';
-            container.innerHTML = '';
-            let sumCost = 0;
-
-            selectedProcedures.forEach((item, index) => {
-                sumCost += item.price;
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-200 shadow-sm";
-                div.innerHTML = `
-                    <span class="text-sm text-gray-800">${item.name}</span>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-sm font-medium text-blue-600">฿${item.price}</span>
-                        <button type="button" onclick="removeProcedure(${index})" class="text-red-400 hover:text-red-600 font-bold px-1 text-lg leading-none">&times;</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-            document.getElementById('procCost1').value = sumCost;
+      try {
+        const json = await callGas({ action: 'getData', provider, startDate, endDate });
+        if (!json.success) {
+          procBody.innerHTML = `<tr><td colspan="4" class="state-msg" style="color:red;">${json.message}</td></tr>`;
+          dailyBody.innerHTML = '';
+          return;
         }
 
-        window.toggleSplitFields = function() {
-            const isChecked = document.getElementById('isSplit').checked;
-            const splitSection = document.getElementById('splitSection');
-            const nextDate = document.getElementById('nextDate');
-            const procCost2 = document.getElementById('procCost2');
+        // KPI
+        document.getElementById('kpiTotal').textContent = json.summary.total.toLocaleString();
+        document.getElementById('kpiIssued').textContent = json.summary.issued.toLocaleString();
+        document.getElementById('kpiPending').textContent = json.summary.pending.toLocaleString();
 
-            if (isChecked) {
-                splitSection.classList.remove('hidden');
-                nextDate.required = true;
-                procCost2.required = true;
-                let d = new Date(document.getElementById('serviceDate').value);
-                d.setDate(d.getDate() + 2);
-                nextDate.valueAsDate = d;
-                procCost2.value = document.getElementById('procCost1').value;
-            } else {
-                splitSection.classList.add('hidden');
-                nextDate.required = false;
-                procCost2.required = false;
-                nextDate.value = '';
-                procCost2.value = '';
-            }
-        };
+        const subText = `${json.provider} (${startDate} ถึง ${endDate})`;
+        document.getElementById('procSubTitle').textContent = subText;
+        document.getElementById('dailySubTitle').textContent = subText;
 
-        window.resetForm = function() {
-            document.getElementById('billingForm').reset();
-            document.getElementById('serviceDate').valueAsDate = new Date();
-            selectedProcedures = [];
-            renderSelectedProcedures();
-            document.getElementById('isSplit').checked = false;
-            window.toggleSplitFields();
-        };
-
-        document.getElementById('billingForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (selectedProcedures.length === 0) {
-                window.showToast("กรุณาเพิ่มรายการหัตถการอย่างน้อย 1 รายการ", false);
-                return;
-            }
-
-            const btn = document.getElementById('submitBtn');
-            const loader = document.getElementById('submitLoader');
-            btn.disabled = true;
-            loader.style.display = 'block';
-
-            const receiptNo = document.getElementById('receiptNo').value.trim();
-            const invoiceNo = document.getElementById('invoiceNo').value.trim();
-            let currentStatus = (receiptNo === "" && invoiceNo === "") ? "ค้างออกใบเสร็จ" : "ออกใบเสร็จแล้ว";
-            const procedureText = selectedProcedures.map(i => i.name).join(', ');
-
-            try {
-                await addDoc(collection(db, 'ttm_services'), {
-                    serviceDate: document.getElementById('serviceDate').value,
-                    idCard: document.getElementById('idCard').value,
-                    patientName: document.getElementById('patientName').value,
-                    patientRight: document.getElementById('patientRight').value,
-                    diagnosis: document.getElementById('diagnosis').value,
-                    procedure: procedureText,
-                    provider: document.getElementById('provider').value,
-                    procCost: parseFloat(document.getElementById('procCost1').value) || 0,
-                    medCost: parseFloat(document.getElementById('medCost').value) || 0,
-                    receiptNo: receiptNo || "-",
-                    invoiceNo: invoiceNo || "-",
-                    status: currentStatus,
-                    timestamp: serverTimestamp()
-                });
-
-                if (document.getElementById('isSplit').checked) {
-                    await addDoc(collection(db, 'ttm_services'), {
-                        serviceDate: document.getElementById('nextDate').value,
-                        idCard: document.getElementById('idCard').value,
-                        patientName: document.getElementById('patientName').value,
-                        patientRight: document.getElementById('patientRight').value,
-                        diagnosis: document.getElementById('diagnosis').value,
-                        procedure: procedureText,
-                        provider: document.getElementById('provider').value,
-                        procCost: parseFloat(document.getElementById('procCost2').value) || 0,
-                        medCost: 0,
-                        receiptNo: "-",
-                        invoiceNo: "-",
-                        status: "ค้างออกใบเสร็จ",
-                        timestamp: serverTimestamp()
-                    });
-                }
-
-                window.showToast("บันทึกข้อมูลเรียบร้อยแล้ว", true);
-                window.resetForm();
-                loadDashboardData(); 
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                window.showToast("เกิดข้อผิดพลาดในการบันทึก", false);
-            } finally {
-                btn.disabled = false;
-                loader.style.display = 'none';
-            }
-        });
-
-        window.saveEditSetting = async function() {
-            const collectionName = document.getElementById('edit-collection').value;
-            const docId = document.getElementById('edit-id').value;
-            const newName = document.getElementById('edit-name').value.trim();
-            const newNum = document.getElementById('edit-num').value;
-            const btn = document.getElementById('btn-save-edit');
-
-            if (!newName) return window.showToast("กรุณากรอกชื่อรายการ", false);
-
-            btn.disabled = true;
-            btn.innerHTML = 'กำลังบันทึก...';
-
-            try {
-                const updateData = { name: newName };
-                if (collectionName === 'ttm_personnel') {
-                    updateData.sharePercent = parseFloat(newNum) || 0;
-                } else if (collectionName === 'ttm_items') {
-                    updateData.price = parseFloat(newNum) || 0;
-                }
-
-                await updateDoc(doc(db, collectionName, docId), updateData);
-                window.showToast("แก้ไขข้อมูลสำเร็จ", true);
-                closeEditModal();
-            } catch (error) {
-                console.error("Edit error:", error);
-                window.showToast("เกิดข้อผิดพลาดในการแก้ไข", false);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = 'บันทึกการแก้ไข';
-            }
-        };
-
-        window.deleteSettingData = async function(collectionName, docId) {
-            if(confirm("ยืนยันการลบข้อมูลรายการนี้?")) {
-                try {
-                    await deleteDoc(doc(db, collectionName, docId));
-                    window.showToast("ลบข้อมูลสำเร็จ");
-                } catch (error) {
-                    window.showToast("ลบข้อมูลไม่สำเร็จ", false);
-                }
-            }
-        };
-
-        function setupRealtimeListeners() {
-            // 1. บุคลากร
-            onSnapshot(query(collection(db, 'ttm_personnel'), orderBy('name')), (snapshot) => {
-                const ul = document.getElementById('list-personnel');
-                const select = document.getElementById('provider');
-                ul.innerHTML = '';
-                select.innerHTML = '<option value="">-- เลือกผู้ให้บริการ --</option>';
-                personnelSharesMap = {}; // เคลียร์ค่าเดิม
-                
-                if(snapshot.empty) ul.innerHTML = '<li class="p-3 text-center text-gray-400">ยังไม่มีข้อมูล</li>';
-                
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    // อัปเดต Map สำหรับคำนวณรายงาน
-                    personnelSharesMap[data.name] = data.sharePercent || 0; 
-                    
-                    let shareText = data.sharePercent ? `<span class="text-xs text-blue-600 ml-2 font-medium">(${data.sharePercent}%)</span>` : `<span class="text-xs text-gray-400 ml-2">(0%)</span>`;
-                    const safeName = data.name.replace(/'/g, "\\'");
-                    
-                    ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
-                        <span>${data.name} ${shareText}</span>
-                        <div class="flex space-x-1">
-                            <button onclick="openEditModal('ttm_personnel', '${docSnap.id}', '${safeName}', ${data.sharePercent || 0})" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
-                            <button onclick="deleteSettingData('ttm_personnel', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
-                        </div>
-                    </li>`;
-                    select.innerHTML += `<option value="${data.name}">${data.name}</option>`;
-                });
-            });
-
-            // 2. หัตถการ
-            onSnapshot(query(collection(db, 'ttm_items'), orderBy('name')), (snapshot) => {
-                const ul = document.getElementById('list-items');
-                const select = document.getElementById('itemSelect');
-                ul.innerHTML = '';
-                select.innerHTML = '<option value="">-- เลือกหัตถการ --</option>';
-                itemsDataState = []; 
-                
-                if(snapshot.empty) ul.innerHTML = '<li class="p-3 text-center text-gray-400">ยังไม่มีข้อมูล</li>';
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    itemsDataState.push({ id: docSnap.id, name: data.name, price: data.price });
-                    const safeName = data.name.replace(/'/g, "\\'");
-                    
-                    ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
-                        <span>${data.name} <span class="text-emerald-600 font-medium ml-2">฿${data.price}</span></span>
-                        <div class="flex space-x-1">
-                            <button onclick="openEditModal('ttm_items', '${docSnap.id}', '${safeName}', ${data.price || 0})" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
-                            <button onclick="deleteSettingData('ttm_items', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
-                        </div>
-                    </li>`;
-                    select.innerHTML += `<option value="${docSnap.id}">${data.name} (฿${data.price})</option>`;
-                });
-            });
-
-            // 3. สิทธิ์การรักษา
-            onSnapshot(query(collection(db, 'ttm_rights'), orderBy('name')), (snapshot) => {
-                const ul = document.getElementById('list-rights');
-                const select = document.getElementById('patientRight');
-                ul.innerHTML = '';
-                select.innerHTML = '<option value="">-- เลือกสิทธิ์ --</option>';
-                
-                if(snapshot.empty) ul.innerHTML = '<li class="p-3 text-center text-gray-400">ยังไม่มีข้อมูล</li>';
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const safeName = data.name.replace(/'/g, "\\'");
-                    ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
-                        <span>${data.name}</span>
-                        <div class="flex space-x-1">
-                            <button onclick="openEditModal('ttm_rights', '${docSnap.id}', '${safeName}')" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
-                            <button onclick="deleteSettingData('ttm_rights', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
-                        </div>
-                    </li>`;
-                    select.innerHTML += `<option value="${data.name}">${data.name}</option>`;
-                });
-            });
-
-            // 4. การวินิจฉัย
-            onSnapshot(query(collection(db, 'ttm_diagnosis'), orderBy('name')), (snapshot) => {
-                const ul = document.getElementById('list-diag');
-                const datalist = document.getElementById('diagnosisOptions');
-                ul.innerHTML = '';
-                datalist.innerHTML = '';
-                
-                if(snapshot.empty) ul.innerHTML = '<li class="p-3 text-center text-gray-400">ยังไม่มีข้อมูล</li>';
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const safeName = data.name.replace(/'/g, "\\'");
-                    ul.innerHTML += `<li class="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-0">
-                        <span>${data.name}</span>
-                        <div class="flex space-x-1">
-                            <button onclick="openEditModal('ttm_diagnosis', '${docSnap.id}', '${safeName}')" class="text-blue-500 hover:text-blue-700 text-xs px-3 py-1.5 bg-blue-50 rounded-md font-medium transition">แก้ไข</button>
-                            <button onclick="deleteSettingData('ttm_diagnosis', '${docSnap.id}')" class="text-red-400 hover:text-red-600 text-xs px-3 py-1.5 bg-red-50 rounded-md font-medium transition">ลบ</button>
-                        </div>
-                    </li>`;
-                    datalist.innerHTML += `<option value="${data.name}">`;
-                });
-            });
+        // Render ตารางหัตถการ
+        if (!json.procedureSummary || json.procedureSummary.length === 0) {
+          procBody.innerHTML = '<tr><td colspan="4" class="state-msg">ไม่มีข้อมูลหัตถการ</td></tr>';
+        } else {
+          let pHtml = '';
+          json.procedureSummary.forEach(p => {
+            pHtml += `
+              <tr>
+                <td><strong>${p.name}</strong></td>
+                <td style="text-align: center;"><span class="badge badge-success">${p.issued}</span></td>
+                <td style="text-align: center;"><span class="badge badge-warning">${p.pending}</span></td>
+                <td style="text-align: center;"><span class="badge badge-purple">${p.total}</span></td>
+              </tr>
+            `;
+          });
+          procBody.innerHTML = pHtml;
         }
 
-        window.addSettingPersonnel = async function() {
-            const inputName = document.getElementById('set-personnel-name');
-            const inputShare = document.getElementById('set-personnel-share');
-            const btn = document.getElementById('btn-add-personnel');
-            if(!inputName.value.trim()) return;
-            
-            btn.disabled = true; btn.innerHTML = "...";
-            try {
-                await addDoc(collection(db, 'ttm_personnel'), { 
-                    name: inputName.value.trim(),
-                    sharePercent: parseFloat(inputShare.value) || 0
-                });
-                inputName.value = ''; inputShare.value = '';
-                window.showToast('เพิ่มพนักงานแล้ว');
-            } catch(e) { window.showToast('ข้อผิดพลาด', false); }
-            finally { btn.disabled = false; btn.innerHTML = "เพิ่ม"; }
-        };
-
-        window.addSettingItem = async function() {
-            const nameInput = document.getElementById('set-item-name');
-            const priceInput = document.getElementById('set-item-price');
-            const btn = document.getElementById('btn-add-item');
-            if(!nameInput.value.trim()) return;
-            
-            btn.disabled = true; btn.innerHTML = "...";
-            try {
-                await addDoc(collection(db, 'ttm_items'), { 
-                    name: nameInput.value.trim(),
-                    price: parseFloat(priceInput.value) || 0
-                });
-                nameInput.value = ''; priceInput.value = '';
-                window.showToast('เพิ่มหัตถการแล้ว');
-            } catch(e) { window.showToast('ข้อผิดพลาด', false); }
-            finally { btn.disabled = false; btn.innerHTML = "เพิ่ม"; }
-        };
-
-        window.addSettingRight = async function() {
-            const input = document.getElementById('set-right-name');
-            const btn = document.getElementById('btn-add-right');
-            if(!input.value.trim()) return;
-            
-            btn.disabled = true; btn.innerHTML = "...";
-            try {
-                await addDoc(collection(db, 'ttm_rights'), { name: input.value.trim() });
-                input.value = '';
-                window.showToast('เพิ่มสิทธิ์การรักษาแล้ว');
-            } catch(e) { window.showToast('ข้อผิดพลาด', false); }
-            finally { btn.disabled = false; btn.innerHTML = "เพิ่ม"; }
-        };
-
-        window.addSettingDiag = async function() {
-            const input = document.getElementById('set-diag-name');
-            const btn = document.getElementById('btn-add-diag');
-            if(!input.value.trim()) return;
-            
-            btn.disabled = true; btn.innerHTML = "...";
-            try {
-                await addDoc(collection(db, 'ttm_diagnosis'), { name: input.value.trim() });
-                input.value = '';
-                window.showToast('เพิ่มการวินิจฉัยแล้ว');
-            } catch(e) { window.showToast('ข้อผิดพลาด', false); }
-            finally { btn.disabled = false; btn.innerHTML = "เพิ่ม"; }
-        };
-
-        async function loadDashboardData() {
-            const todayStr = new Date().toISOString().split('T')[0];
-            
-            try {
-                const q = query(collection(db, "ttm_services"));
-                const querySnapshot = await getDocs(q);
-                
-                let todayTotal = 0;
-                let pendingTotal = 0;
-
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const totalCost = (data.procCost || 0) + (data.medCost || 0);
-
-                    if (data.status === "ค้างออกใบเสร็จ") {
-                        pendingTotal += totalCost;
-                    }
-                    if (data.status === "ออกใบเสร็จแล้ว" && data.serviceDate === todayStr) {
-                        todayTotal += totalCost;
-                    }
-                });
-
-                const formatMoney = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
-                document.getElementById('dash-today').textContent = formatMoney(todayTotal);
-                document.getElementById('dash-pending').textContent = formatMoney(pendingTotal);
-                
-            } catch (error) {
-                console.error("Dashboard Error:", error);
-            }
+        // Render ตารางรายวัน
+        if (!json.records || json.records.length === 0) {
+          dailyBody.innerHTML = '<tr><td colspan="5" class="state-msg">ไม่พบข้อมูลรายวันในช่วงนี้</td></tr>';
+        } else {
+          let dHtml = '';
+          json.records.forEach(r => {
+            dHtml += `
+              <tr>
+                <td><strong>${r.date}</strong></td>
+                <td>${r.day || '-'}</td>
+                <td style="text-align: center;"><span class="badge badge-success">${r.issued}</span></td>
+                <td style="text-align: center;"><span class="badge badge-warning">${r.pending}</span></td>
+                <td style="text-align: center;"><span class="badge badge-purple">${r.total}</span></td>
+              </tr>
+            `;
+          });
+          dailyBody.innerHTML = dHtml;
         }
 
-        window.fetchReport = async function() {
-            const btn = document.getElementById('btnSearchReport');
-            const loader = document.getElementById('reportLoader');
-            const tbody = document.getElementById('reportTbody');
-            
-            const start = document.getElementById('startDate').value;
-            const end = document.getElementById('endDate').value;
-            
-            btn.disabled = true;
-            loader.style.display = 'block';
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-gray-500">กำลังโหลดข้อมูล...</td></tr>';
+      } catch (err) {
+        handleError(err);
+      }
+    }
 
-            try {
-                const querySnapshot = await getDocs(collection(db, "ttm_services"));
-                const formatMoney = (num) => Number(num).toLocaleString('th-TH', {minimumFractionDigits: 2});
-                
-                let html = '';
-                let hasData = false;
-                const allDocs = [];
-                
-                querySnapshot.forEach(d => allDocs.push(d.data()));
-                allDocs.sort((a,b) => new Date(b.serviceDate) - new Date(a.serviceDate));
+    function handleError(err) {
+      if (err.message === "NO_URL") {
+        document.getElementById('apiBanner').style.display = 'block';
+        alert('กรุณากำหนด Web App URL ก่อนใช้งาน');
+      } else {
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูล: ' + err);
+      }
+    }
 
-                allDocs.forEach(data => {
-                    if (data.serviceDate >= start && data.serviceDate <= end) {
-                        hasData = true;
-                        
-                        let statusBadge = data.status === "ออกใบเสร็จแล้ว" 
-                            ? `<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">ออกใบเสร็จแล้ว</span>`
-                            : `<span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">ค้างออกใบเสร็จ</span>`;
+    function initApp() {
+      const url = getApiUrl();
+      if (url) document.getElementById('apiUrlInput').value = url;
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      document.getElementById('startDate').value = formatDate(firstDay);
+      document.getElementById('endDate').value = formatDate(now);
+      loadProviders();
+    }
 
-                        let dateObj = new Date(data.serviceDate);
-                        let dateStr = dateObj.toLocaleDateString('th-TH');
-
-                        // คำนวณรายได้แพทย์ 
-                        let sharePercent = personnelSharesMap[data.provider] || 0;
-                        if(sharePercent > 1) sharePercent = sharePercent / 100;
-                        let providerIncome = (data.procCost || 0) * sharePercent;
-
-                        html += `
-                            <tr class="hover:bg-gray-50 border-b">
-                                <td class="py-3">${dateStr}</td>
-                                <td>${data.patientName}</td>
-                                <td><span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${data.patientRight}</span></td>
-                                <td>${data.diagnosis}</td>
-                                <td class="whitespace-normal min-w-[150px] text-xs">${data.procedure}</td>
-                                <td class="text-right">฿${formatMoney(data.procCost)}</td>
-                                <td class="text-right">฿${formatMoney(data.medCost)}</td>
-                                <td class="text-center">${statusBadge}</td>
-                                <td>${data.provider}</td>
-                                <td class="text-right font-medium text-emerald-600">฿${formatMoney(providerIncome)}</td>
-                            </tr>
-                        `;
-                    }
-                });
-
-                if (hasData) {
-                    tbody.innerHTML = html;
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-gray-500">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>';
-                }
-
-            } catch (error) {
-                console.error("Report Error:", error);
-                window.showToast("ไม่สามารถโหลดรายงานได้", false);
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
-            } finally {
-                btn.disabled = false;
-                loader.style.display = 'none';
-            }
-        };
-
-        window.exportToExcel = function() {
-            const table = document.getElementById("reportTable");
-            let csv = [];
-            
-            let headers = [];
-            table.querySelectorAll("thead th").forEach(th => {
-                headers.push('"' + th.innerText + '"');
-            });
-            csv.push(headers.join(","));
-            
-            const rows = table.querySelectorAll("tbody tr");
-            if(rows.length === 1 && rows[0].innerText.includes("ไม่พบข้อมูล")) {
-                window.showToast("ไม่มีข้อมูลให้ Export", false);
-                return;
-            }
-
-            rows.forEach(tr => {
-                let row = [];
-                tr.querySelectorAll("td").forEach(td => {
-                    let text = td.innerText.replace('฿', '').trim();
-                    row.push('"' + text + '"');
-                });
-                csv.push(row.join(","));
-            });
-            
-            let csvContent = "\uFEFF" + csv.join("\n");
-            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            let link = document.createElement("a");
-            
-            const start = document.getElementById('startDate').value;
-            const end = document.getElementById('endDate').value;
-            
-            link.href = URL.createObjectURL(blob);
-            link.download = `รายงานคลินิก_${start}_ถึง_${end}.csv`;
-            link.style.display = "none";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-
-    </script>
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
 </body>
 </html>
